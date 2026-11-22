@@ -131,3 +131,5 @@ COLOUR_MODIFIERS = {"jet", "pitch", "all", "bright", "deep", "dark", "light", "p
 # Generic product words. Used only when nothing more specific names the category.
 GENERIC_HEADS = {"shoes": "footwear", "shoe": "footwear", "trainers": "footwear", "trainer": "footwear",
                  "footwear": "footwear", "pants": "pants", "pant": "pants", "bottoms": "pants", "trousers": "pants"}
+# The categories each generic head can resolve to; a head is used only if the catalogue has them all.
+GENERIC_TARGETS = {"footwear": ("running shoes", "sneakers"), "pants": ("jeans", "track pants")}

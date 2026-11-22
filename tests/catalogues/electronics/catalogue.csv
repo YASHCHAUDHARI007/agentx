@@ -1,0 +1,159 @@
+sku,name,brand,type,color,storage,price_inr,rating,description
+E0001,"Voltra Air Laptop, Space Grey, 256GB",Voltra,laptops,space grey,256GB,56500,4.0,Air laptop by Voltra in space grey. 256GB storage.
+E0002,"Kaidan Pad Tablet, Silver, 64GB",Kaidan,tablets,silver,64GB,33000,4.1,Pad tablet by Kaidan in silver. 64GB storage.
+E0003,"Kaidan Zen Smartphone, Blue, 512GB",Kaidan,smartphones,blue,512GB,36000,4.5,Zen smartphone by Kaidan in blue. 512GB storage.
+E0004,"Voltra Air Laptop, Space Grey, 1TB",Voltra,laptops,space grey,1TB,66500,4.7,Air laptop by Voltra in space grey. 1TB storage.
+E0005,"Orbix Edge Smartphone, Green, 256GB",Orbix,smartphones,green,256GB,39500,4.6,Edge smartphone by Orbix in green. 256GB storage.
+E0006,"Kaidan Air Earbuds, Black",Kaidan,earbuds,black,,5400,4.4,Air earbud by Kaidan in black.
+E0007,"Voltra Buds Earbuds, Blue",Voltra,earbuds,blue,,900,4.1,Buds earbud by Voltra in blue.
+E0008,"Voltra Air Laptop, Black, 256GB",Voltra,laptops,black,256GB,57000,4.5,Air laptop by Voltra in black. 256GB storage.
+E0009,"Nexo Slate Tablet, Silver, 256GB",Nexo,tablets,silver,256GB,40500,3.7,Slate tablet by Nexo in silver. 256GB storage.
+E0010,"Voltra Nova Smartphone, Black, 128GB",Voltra,smartphones,black,128GB,44500,3.7,Nova smartphone by Voltra in black. 128GB storage.
+E0011,"Voltra Nova Smartphone, Green, 512GB",Voltra,smartphones,green,512GB,52500,4.9,Nova smartphone by Voltra in green. 512GB storage.
+E0012,"Nexo Pulse Smartphone, Black, 128GB",Nexo,smartphones,black,128GB,35500,3.7,Pulse smartphone by Nexo in black. 128GB storage.
+E0013,"Nexo Pulse Smartphone, Blue, 64GB",Nexo,smartphones,blue,64GB,32500,3.4,Pulse smartphone by Nexo in blue. 64GB storage.
+E0014,"Orbix Pro Laptop, Space Grey, 512GB",Orbix,laptops,space grey,512GB,57500,4.3,Pro laptop by Orbix in space grey. 512GB storage.
+E0015,"Orbix Edge Smartphone, Black, 256GB",Orbix,smartphones,black,256GB,35000,4.3,Edge smartphone by Orbix in black. 256GB storage.
+E0016,"Kaidan Pad Tablet, Pink, 256GB",Kaidan,tablets,pink,256GB,43000,4.1,Pad tablet by Kaidan in pink. 256GB storage.
+E0017,"Orbix Edge Smartphone, White, 512GB",Orbix,smartphones,white,512GB,53000,4.5,Edge smartphone by Orbix in white. 512GB storage.
+E0018,"Kaidan Air Earbuds, White",Kaidan,earbuds,white,,4900,3.9,Air earbud by Kaidan in white.
+E0019,"Orbix Fit Smartwatche, Pink",Orbix,smartwatches,pink,,19800,4.2,Fit smartwatche by Orbix in pink.
+E0020,"Lumio Tab Tablet, Space Grey, 64GB",Lumio,tablets,space grey,64GB,13000,4.3,Tab tablet by Lumio in space grey. 64GB storage.
+E0021,"Nexo Pulse Smartphone, Green, 512GB",Nexo,smartphones,green,512GB,57000,4.9,Pulse smartphone by Nexo in green. 512GB storage.
+E0022,"Orbix Pro Laptop, Silver, 256GB",Orbix,laptops,silver,256GB,52000,3.6,Pro laptop by Orbix in silver. 256GB storage.
+E0023,"Kaidan Zen Smartphone, Green, 512GB",Kaidan,smartphones,green,512GB,46000,4.5,Zen smartphone by Kaidan in green. 512GB storage.
+E0024,"Voltra Nova Smartphone, Blue, 64GB",Voltra,smartphones,blue,64GB,37500,3.5,Nova smartphone by Voltra in blue. 64GB storage.
+E0025,"Kaidan Zen Smartphone, Green, 128GB",Kaidan,smartphones,green,128GB,24500,4.2,Zen smartphone by Kaidan in green. 128GB storage.
+E0026,"Nexo Pulse Smartphone, Gold, 128GB",Nexo,smartphones,gold,128GB,41500,4.3,Pulse smartphone by Nexo in gold. 128GB storage.
+E0027,"Lumio Tab Tablet, Pink, 128GB",Lumio,tablets,pink,128GB,17000,4.3,Tab tablet by Lumio in pink. 128GB storage.
+E0028,"Orbix Pro Laptop, Space Grey, 1TB",Orbix,laptops,space grey,1TB,63000,3.9,Pro laptop by Orbix in space grey. 1TB storage.
+E0029,"Kaidan Zen Smartphone, White, 512GB",Kaidan,smartphones,white,512GB,31000,3.5,Zen smartphone by Kaidan in white. 512GB storage.
+E0030,"Voltra Nova Smartphone, Gold, 512GB",Voltra,smartphones,gold,512GB,51500,4.7,Nova smartphone by Voltra in gold. 512GB storage.
+E0031,"Kaidan Zen Smartphone, Green, 256GB",Kaidan,smartphones,green,256GB,37000,4.8,Zen smartphone by Kaidan in green. 256GB storage.
+E0032,"Sonique Band Smartwatche, Black",Sonique,smartwatches,black,,17800,4.1,Band smartwatche by Sonique in black.
+E0033,"Nexo Pods Earbuds, White",Nexo,earbuds,white,,5400,4.8,Pods earbud by Nexo in white.
+E0034,"Kaidan Zen Smartphone, Black, 512GB",Kaidan,smartphones,black,512GB,46000,4.9,Zen smartphone by Kaidan in black. 512GB storage.
+E0035,"Nexo Slate Tablet, Silver, 128GB",Nexo,tablets,silver,128GB,38000,4.4,Slate tablet by Nexo in silver. 128GB storage.
+E0036,"Orbix Pro Laptop, Black, 1TB",Orbix,laptops,black,1TB,59000,4.5,Pro laptop by Orbix in black. 1TB storage.
+E0037,"Kaidan Zen Smartphone, Black, 64GB",Kaidan,smartphones,black,64GB,21000,3.5,Zen smartphone by Kaidan in black. 64GB storage.
+E0038,"Voltra Nova Smartphone, Blue, 256GB",Voltra,smartphones,blue,256GB,52500,4.6,Nova smartphone by Voltra in blue. 256GB storage.
+E0039,"Lumio Book Laptop, Silver, 1TB",Lumio,laptops,silver,1TB,49500,3.6,Book laptop by Lumio in silver. 1TB storage.
+E0040,"Lumio Watch Smartwatche, Green",Lumio,smartwatches,green,,19300,3.8,Watch smartwatche by Lumio in green.
+E0041,"Orbix Edge Smartphone, Black, 128GB",Orbix,smartphones,black,128GB,32000,4.3,Edge smartphone by Orbix in black. 128GB storage.
+E0042,"Sonique Beat Earbuds, White",Sonique,earbuds,white,,2400,4.2,Beat earbud by Sonique in white.
+E0043,"Orbix Edge Smartphone, Gold, 128GB",Orbix,smartphones,gold,128GB,32000,4.1,Edge smartphone by Orbix in gold. 128GB storage.
+E0044,"Kaidan Zen Smartphone, Gold, 256GB",Kaidan,smartphones,gold,256GB,31000,4.7,Zen smartphone by Kaidan in gold. 256GB storage.
+E0045,"Nexo Slate Tablet, Space Grey, 64GB",Nexo,tablets,space grey,64GB,30000,4.6,Slate tablet by Nexo in space grey. 64GB storage.
+E0046,"Kaidan Zen Smartphone, White, 256GB",Kaidan,smartphones,white,256GB,38000,4.3,Zen smartphone by Kaidan in white. 256GB storage.
+E0047,"Nexo Pods Earbuds, Black",Nexo,earbuds,black,,5900,4.7,Pods earbud by Nexo in black.
+E0048,"Orbix Edge Smartphone, White, 64GB",Orbix,smartphones,white,64GB,29500,4.6,Edge smartphone by Orbix in white. 64GB storage.
+E0049,"Lumio Tab Tablet, Pink, 256GB",Lumio,tablets,pink,256GB,18500,4.2,Tab tablet by Lumio in pink. 256GB storage.
+E0050,"Voltra Nova Smartphone, Black, 64GB",Voltra,smartphones,black,64GB,37000,4.1,Nova smartphone by Voltra in black. 64GB storage.
+E0051,"Kaidan Zen Smartphone, Gold, 64GB",Kaidan,smartphones,gold,64GB,21500,3.5,Zen smartphone by Kaidan in gold. 64GB storage.
+E0052,"Nexo Pulse Smartphone, Gold, 256GB",Nexo,smartphones,gold,256GB,38500,3.7,Pulse smartphone by Nexo in gold. 256GB storage.
+E0053,"Lumio Book Laptop, Space Grey, 256GB",Lumio,laptops,space grey,256GB,39000,4.2,Book laptop by Lumio in space grey. 256GB storage.
+E0054,"Orbix Edge Smartphone, Gold, 64GB",Orbix,smartphones,gold,64GB,30000,4.9,Edge smartphone by Orbix in gold. 64GB storage.
+E0055,"Orbix Pro Laptop, Black, 256GB",Orbix,laptops,black,256GB,52500,3.9,Pro laptop by Orbix in black. 256GB storage.
+E0056,"Nexo Pulse Smartphone, Green, 64GB",Nexo,smartphones,green,64GB,33500,4.0,Pulse smartphone by Nexo in green. 64GB storage.
+E0057,"Lumio Tab Tablet, Space Grey, 128GB",Lumio,tablets,space grey,128GB,15500,4.7,Tab tablet by Lumio in space grey. 128GB storage.
+E0058,"Nexo Pulse Smartphone, Blue, 128GB",Nexo,smartphones,blue,128GB,38000,3.7,Pulse smartphone by Nexo in blue. 128GB storage.
+E0059,"Lumio Book Laptop, Space Grey, 1TB",Lumio,laptops,space grey,1TB,49000,3.9,Book laptop by Lumio in space grey. 1TB storage.
+E0060,"Kaidan Zen Smartphone, Blue, 64GB",Kaidan,smartphones,blue,64GB,21500,4.8,Zen smartphone by Kaidan in blue. 64GB storage.
+E0061,"Voltra Nova Smartphone, White, 256GB",Voltra,smartphones,white,256GB,47000,4.4,Nova smartphone by Voltra in white. 256GB storage.
+E0062,"Orbix Edge Smartphone, Blue, 64GB",Orbix,smartphones,blue,64GB,30000,4.3,Edge smartphone by Orbix in blue. 64GB storage.
+E0063,"Kaidan Zen Smartphone, Gold, 512GB",Kaidan,smartphones,gold,512GB,45000,4.3,Zen smartphone by Kaidan in gold. 512GB storage.
+E0064,"Kaidan Pad Tablet, Space Grey, 128GB",Kaidan,tablets,space grey,128GB,38500,4.9,Pad tablet by Kaidan in space grey. 128GB storage.
+E0065,"Nexo Slate Tablet, Pink, 256GB",Nexo,tablets,pink,256GB,40500,3.7,Slate tablet by Nexo in pink. 256GB storage.
+E0066,"Voltra Nova Smartphone, White, 512GB",Voltra,smartphones,white,512GB,61500,3.6,Nova smartphone by Voltra in white. 512GB storage.
+E0067,"Lumio Book Laptop, Black, 256GB",Lumio,laptops,black,256GB,39500,3.7,Book laptop by Lumio in black. 256GB storage.
+E0068,"Nexo Pulse Smartphone, Gold, 64GB",Nexo,smartphones,gold,64GB,32500,3.7,Pulse smartphone by Nexo in gold. 64GB storage.
+E0069,"Nexo Pulse Smartphone, Black, 64GB",Nexo,smartphones,black,64GB,32500,4.7,Pulse smartphone by Nexo in black. 64GB storage.
+E0070,"Nexo Pulse Smartphone, Black, 256GB",Nexo,smartphones,black,256GB,39000,4.0,Pulse smartphone by Nexo in black. 256GB storage.
+E0071,"Orbix Fit Smartwatche, Black",Orbix,smartwatches,black,,19800,4.0,Fit smartwatche by Orbix in black.
+E0072,"Lumio Book Laptop, Silver, 256GB",Lumio,laptops,silver,256GB,40000,4.4,Book laptop by Lumio in silver. 256GB storage.
+E0073,"Nexo Pulse Smartphone, Black, 512GB",Nexo,smartphones,black,512GB,57000,4.0,Pulse smartphone by Nexo in black. 512GB storage.
+E0074,"Voltra Air Laptop, Space Grey, 512GB",Voltra,laptops,space grey,512GB,65000,4.3,Air laptop by Voltra in space grey. 512GB storage.
+E0075,"Voltra Nova Smartphone, Gold, 256GB",Voltra,smartphones,gold,256GB,43500,4.5,Nova smartphone by Voltra in gold. 256GB storage.
+E0076,"Lumio Watch Smartwatche, Black",Lumio,smartwatches,black,,18800,4.1,Watch smartwatche by Lumio in black.
+E0077,"Nexo Pods Earbuds, Blue",Nexo,earbuds,blue,,5900,4.8,Pods earbud by Nexo in blue.
+E0078,"Kaidan Zen Smartphone, White, 128GB",Kaidan,smartphones,white,128GB,26500,4.4,Zen smartphone by Kaidan in white. 128GB storage.
+E0079,"Kaidan Zen Smartphone, Blue, 256GB",Kaidan,smartphones,blue,256GB,28000,4.4,Zen smartphone by Kaidan in blue. 256GB storage.
+E0080,"Voltra Nova Smartphone, White, 64GB",Voltra,smartphones,white,64GB,36500,4.2,Nova smartphone by Voltra in white. 64GB storage.
+E0081,"Lumio Watch Smartwatche, Pink",Lumio,smartwatches,pink,,19300,4.0,Watch smartwatche by Lumio in pink.
+E0082,"Voltra Nova Smartphone, Green, 128GB",Voltra,smartphones,green,128GB,42000,3.4,Nova smartphone by Voltra in green. 128GB storage.
+E0083,"Kaidan Zen Smartphone, Black, 128GB",Kaidan,smartphones,black,128GB,26500,3.8,Zen smartphone by Kaidan in black. 128GB storage.
+E0084,"Sonique Band Smartwatche, Pink",Sonique,smartwatches,pink,,17800,4.3,Band smartwatche by Sonique in pink.
+E0085,"Lumio Tab Tablet, Pink, 64GB",Lumio,tablets,pink,64GB,12500,3.6,Tab tablet by Lumio in pink. 64GB storage.
+E0086,"Kaidan Pad Tablet, Space Grey, 64GB",Kaidan,tablets,space grey,64GB,33000,4.9,Pad tablet by Kaidan in space grey. 64GB storage.
+E0087,"Orbix Edge Smartphone, Black, 512GB",Orbix,smartphones,black,512GB,45000,4.1,Edge smartphone by Orbix in black. 512GB storage.
+E0088,"Voltra Air Laptop, Silver, 512GB",Voltra,laptops,silver,512GB,59000,3.5,Air laptop by Voltra in silver. 512GB storage.
+E0089,"Sonique Beat Earbuds, Blue",Sonique,earbuds,blue,,2400,4.2,Beat earbud by Sonique in blue.
+E0090,"Voltra Nova Smartphone, Green, 256GB",Voltra,smartphones,green,256GB,43000,4.4,Nova smartphone by Voltra in green. 256GB storage.
+E0091,"Kaidan Air Earbuds, Blue",Kaidan,earbuds,blue,,5900,4.2,Air earbud by Kaidan in blue.
+E0092,"Orbix Edge Smartphone, White, 128GB",Orbix,smartphones,white,128GB,32500,3.7,Edge smartphone by Orbix in white. 128GB storage.
+E0093,"Lumio Book Laptop, Black, 1TB",Lumio,laptops,black,1TB,49000,4.3,Book laptop by Lumio in black. 1TB storage.
+E0094,"Lumio Watch Smartwatche, Silver",Lumio,smartwatches,silver,,18800,3.5,Watch smartwatche by Lumio in silver.
+E0095,"Orbix Pro Laptop, Silver, 1TB",Orbix,laptops,silver,1TB,62000,3.6,Pro laptop by Orbix in silver. 1TB storage.
+E0096,"Nexo Slate Tablet, Silver, 64GB",Nexo,tablets,silver,64GB,30500,4.4,Slate tablet by Nexo in silver. 64GB storage.
+E0097,"Voltra Nova Smartphone, Black, 256GB",Voltra,smartphones,black,256GB,53000,4.3,Nova smartphone by Voltra in black. 256GB storage.
+E0098,"Voltra Air Laptop, Black, 512GB",Voltra,laptops,black,512GB,59500,4.3,Air laptop by Voltra in black. 512GB storage.
+E0099,"Voltra Air Laptop, Silver, 256GB",Voltra,laptops,silver,256GB,57000,3.4,Air laptop by Voltra in silver. 256GB storage.
+E0100,"Orbix Edge Smartphone, Blue, 512GB",Orbix,smartphones,blue,512GB,44000,3.6,Edge smartphone by Orbix in blue. 512GB storage.
+E0101,"Nexo Pulse Smartphone, White, 128GB",Nexo,smartphones,white,128GB,41000,3.9,Pulse smartphone by Nexo in white. 128GB storage.
+E0102,"Nexo Slate Tablet, Space Grey, 256GB",Nexo,tablets,space grey,256GB,37000,4.2,Slate tablet by Nexo in space grey. 256GB storage.
+E0103,"Orbix Fit Smartwatche, Green",Orbix,smartwatches,green,,20800,4.8,Fit smartwatche by Orbix in green.
+E0104,"Orbix Pro Laptop, Space Grey, 256GB",Orbix,laptops,space grey,256GB,52500,4.8,Pro laptop by Orbix in space grey. 256GB storage.
+E0105,"Kaidan Zen Smartphone, Blue, 128GB",Kaidan,smartphones,blue,128GB,29500,4.8,Zen smartphone by Kaidan in blue. 128GB storage.
+E0106,"Orbix Edge Smartphone, Green, 128GB",Orbix,smartphones,green,128GB,33000,4.5,Edge smartphone by Orbix in green. 128GB storage.
+E0107,"Kaidan Pad Tablet, Pink, 64GB",Kaidan,tablets,pink,64GB,33000,4.2,Pad tablet by Kaidan in pink. 64GB storage.
+E0108,"Lumio Tab Tablet, Silver, 64GB",Lumio,tablets,silver,64GB,13000,4.5,Tab tablet by Lumio in silver. 64GB storage.
+E0109,"Sonique Band Smartwatche, Silver",Sonique,smartwatches,silver,,18300,3.9,Band smartwatche by Sonique in silver.
+E0110,"Nexo Pulse Smartphone, Green, 128GB",Nexo,smartphones,green,128GB,38000,4.9,Pulse smartphone by Nexo in green. 128GB storage.
+E0111,"Voltra Nova Smartphone, Blue, 512GB",Voltra,smartphones,blue,512GB,52000,4.3,Nova smartphone by Voltra in blue. 512GB storage.
+E0112,"Lumio Book Laptop, Space Grey, 512GB",Lumio,laptops,space grey,512GB,45000,4.8,Book laptop by Lumio in space grey. 512GB storage.
+E0113,"Voltra Nova Smartphone, Gold, 64GB",Voltra,smartphones,gold,64GB,37500,3.8,Nova smartphone by Voltra in gold. 64GB storage.
+E0114,"Nexo Pulse Smartphone, Blue, 256GB",Nexo,smartphones,blue,256GB,48500,4.1,Pulse smartphone by Nexo in blue. 256GB storage.
+E0115,"Lumio Tab Tablet, Silver, 128GB",Lumio,tablets,silver,128GB,15000,3.8,Tab tablet by Lumio in silver. 128GB storage.
+E0116,"Voltra Nova Smartphone, Gold, 128GB",Voltra,smartphones,gold,128GB,40500,3.8,Nova smartphone by Voltra in gold. 128GB storage.
+E0117,"Voltra Nova Smartphone, Green, 64GB",Voltra,smartphones,green,64GB,37500,3.8,Nova smartphone by Voltra in green. 64GB storage.
+E0118,"Nexo Slate Tablet, Pink, 64GB",Nexo,tablets,pink,64GB,30500,4.8,Slate tablet by Nexo in pink. 64GB storage.
+E0119,"Lumio Tab Tablet, Space Grey, 256GB",Lumio,tablets,space grey,256GB,28000,3.5,Tab tablet by Lumio in space grey. 256GB storage.
+E0120,"Orbix Pro Laptop, Silver, 512GB",Orbix,laptops,silver,512GB,57000,4.5,Pro laptop by Orbix in silver. 512GB storage.
+E0121,"Nexo Pulse Smartphone, White, 512GB",Nexo,smartphones,white,512GB,47500,3.6,Pulse smartphone by Nexo in white. 512GB storage.
+E0122,"Nexo Pulse Smartphone, White, 64GB",Nexo,smartphones,white,64GB,33500,3.7,Pulse smartphone by Nexo in white. 64GB storage.
+E0123,"Lumio Tab Tablet, Silver, 256GB",Lumio,tablets,silver,256GB,23000,4.4,Tab tablet by Lumio in silver. 256GB storage.
+E0124,"Nexo Slate Tablet, Pink, 128GB",Nexo,tablets,pink,128GB,38000,3.7,Slate tablet by Nexo in pink. 128GB storage.
+E0125,"Kaidan Pad Tablet, Silver, 128GB",Kaidan,tablets,silver,128GB,40500,3.5,Pad tablet by Kaidan in silver. 128GB storage.
+E0126,"Kaidan Zen Smartphone, Gold, 128GB",Kaidan,smartphones,gold,128GB,26000,4.7,Zen smartphone by Kaidan in gold. 128GB storage.
+E0127,"Voltra Buds Earbuds, Black",Voltra,earbuds,black,,900,4.0,Buds earbud by Voltra in black.
+E0128,"Orbix Edge Smartphone, White, 256GB",Orbix,smartphones,white,256GB,35500,4.8,Edge smartphone by Orbix in white. 256GB storage.
+E0129,"Voltra Air Laptop, Black, 1TB",Voltra,laptops,black,1TB,66000,3.7,Air laptop by Voltra in black. 1TB storage.
+E0130,"Orbix Edge Smartphone, Gold, 512GB",Orbix,smartphones,gold,512GB,44000,4.8,Edge smartphone by Orbix in gold. 512GB storage.
+E0131,"Nexo Pulse Smartphone, Green, 256GB",Nexo,smartphones,green,256GB,39000,4.7,Pulse smartphone by Nexo in green. 256GB storage.
+E0132,"Kaidan Pad Tablet, Pink, 128GB",Kaidan,tablets,pink,128GB,36000,3.9,Pad tablet by Kaidan in pink. 128GB storage.
+E0133,"Orbix Edge Smartphone, Green, 512GB",Orbix,smartphones,green,512GB,53500,3.8,Edge smartphone by Orbix in green. 512GB storage.
+E0134,"Orbix Edge Smartphone, Green, 64GB",Orbix,smartphones,green,64GB,30000,4.8,Edge smartphone by Orbix in green. 64GB storage.
+E0135,"Orbix Edge Smartphone, Black, 64GB",Orbix,smartphones,black,64GB,29500,3.5,Edge smartphone by Orbix in black. 64GB storage.
+E0136,"Sonique Beat Earbuds, Black",Sonique,earbuds,black,,1900,4.2,Beat earbud by Sonique in black.
+E0137,"Orbix Pro Laptop, Black, 512GB",Orbix,laptops,black,512GB,55500,4.7,Pro laptop by Orbix in black. 512GB storage.
+E0138,"Lumio Book Laptop, Black, 512GB",Lumio,laptops,black,512GB,44000,4.7,Book laptop by Lumio in black. 512GB storage.
+E0139,"Sonique Band Smartwatche, Green",Sonique,smartwatches,green,,17300,4.5,Band smartwatche by Sonique in green.
+E0140,"Nexo Slate Tablet, Space Grey, 128GB",Nexo,tablets,space grey,128GB,34000,3.6,Slate tablet by Nexo in space grey. 128GB storage.
+E0141,"Voltra Buds Earbuds, White",Voltra,earbuds,white,,900,4.2,Buds earbud by Voltra in white.
+E0142,"Orbix Edge Smartphone, Blue, 256GB",Orbix,smartphones,blue,256GB,39500,4.3,Edge smartphone by Orbix in blue. 256GB storage.
+E0143,"Kaidan Zen Smartphone, White, 64GB",Kaidan,smartphones,white,64GB,21500,3.6,Zen smartphone by Kaidan in white. 64GB storage.
+E0144,"Kaidan Pad Tablet, Space Grey, 256GB",Kaidan,tablets,space grey,256GB,43000,4.8,Pad tablet by Kaidan in space grey. 256GB storage.
+E0145,"Nexo Pulse Smartphone, Blue, 512GB",Nexo,smartphones,blue,512GB,42500,4.6,Pulse smartphone by Nexo in blue. 512GB storage.
+E0146,"Orbix Fit Smartwatche, Silver",Orbix,smartwatches,silver,,20800,3.4,Fit smartwatche by Orbix in silver.
+E0147,"Nexo Pulse Smartphone, White, 256GB",Nexo,smartphones,white,256GB,43000,3.4,Pulse smartphone by Nexo in white. 256GB storage.
+E0148,"Kaidan Pad Tablet, Silver, 256GB",Kaidan,tablets,silver,256GB,49500,3.6,Pad tablet by Kaidan in silver. 256GB storage.
+E0149,"Kaidan Zen Smartphone, Black, 256GB",Kaidan,smartphones,black,256GB,27000,3.8,Zen smartphone by Kaidan in black. 256GB storage.
+E0150,"Lumio Book Laptop, Silver, 512GB",Lumio,laptops,silver,512GB,44500,4.7,Book laptop by Lumio in silver. 512GB storage.
+E0151,"Voltra Air Laptop, Silver, 1TB",Voltra,laptops,silver,1TB,62500,4.7,Air laptop by Voltra in silver. 1TB storage.
+E0152,"Kaidan Zen Smartphone, Green, 64GB",Kaidan,smartphones,green,64GB,21000,4.9,Zen smartphone by Kaidan in green. 64GB storage.
+E0153,"Voltra Nova Smartphone, Black, 512GB",Voltra,smartphones,black,512GB,45500,4.1,Nova smartphone by Voltra in black. 512GB storage.
+E0154,"Orbix Edge Smartphone, Gold, 256GB",Orbix,smartphones,gold,256GB,46000,4.3,Edge smartphone by Orbix in gold. 256GB storage.
+E0155,"Nexo Pulse Smartphone, Gold, 512GB",Nexo,smartphones,gold,512GB,47500,4.6,Pulse smartphone by Nexo in gold. 512GB storage.
+E0156,"Orbix Edge Smartphone, Blue, 128GB",Orbix,smartphones,blue,128GB,37000,4.4,Edge smartphone by Orbix in blue. 128GB storage.
+E0157,"Voltra Nova Smartphone, Blue, 128GB",Voltra,smartphones,blue,128GB,39500,4.7,Nova smartphone by Voltra in blue. 128GB storage.
+E0158,"Voltra Nova Smartphone, White, 128GB",Voltra,smartphones,white,128GB,45500,3.5,Nova smartphone by Voltra in white. 128GB storage.

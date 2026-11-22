@@ -1,0 +1,12 @@
+{
+  "_comment": "What the shop supplies: only the words its customers use that the catalogue does not. Columns, roles and filters are detected from catalogue.csv.",
+  "synonyms": {
+    "type": {
+      "smartphones": ["phone", "phones", "mobile", "mobiles", "mobile phone", "5g phone"],
+      "laptops": ["notebook", "notebooks"],
+      "tablets": ["tab", "tabs"],
+      "earbuds": ["buds", "wireless earbuds", "tws earbuds", "tws"],
+      "smartwatches": ["smart watch", "fitness watch", "watch"]
+    }
+  }
+}

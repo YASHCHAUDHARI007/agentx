@@ -8,64 +8,17 @@ Rules:
   * Numbers of 100 or more are budgets; small numbers that are real sizes are sizes.
   * `pending` is True when the prefix ends mid-thought ("under", "size", "one thousand", "extra",
     "sorry,"), so a commit right now would be premature.
+
+Everything catalogue-specific lives in a Vocab, built from a catalogue profile (catalogue.py), so
+one process can parse requests for several shops. parse(words) uses the default catalogue.
 """
-import csv
 import re
 from dataclasses import dataclass, field
 
-from lexicon import (BUDGET_CUES, CATALOGUE, CATEGORY_SYNONYMS, COLOUR_MODIFIERS, COLOUR_SYNONYMS,
-                     CORRECTION_CUES, CURRENCY, FILLER, GENERIC_HEADS, HALF_MORE, HINDI_FRACTIONS, HINDI_UNITS,
+from catalogue import Profile
+from lexicon import (BUDGET_CUES, COLOUR_MODIFIERS,
+                     CORRECTION_CUES, CURRENCY, FILLER, GENERIC_HEADS, GENERIC_TARGETS, HALF_MORE, HINDI_FRACTIONS, HINDI_UNITS,
                      MULTIPLIERS, SIZE_CUES, SIZE_POST_CUES, SIZE_WORDS, UNITS)
-
-SLOTS = ("category", "colour", "brand", "size", "max_price")
-
-
-def _load_catalogue_vocab():
-    with open(CATALOGUE, newline="", encoding="utf-8") as fh:
-        rows = list(csv.DictReader(fh))
-    brands = sorted({r["brand"] for r in rows})
-    sizes_by_cat = {}
-    for r in rows:
-        sizes_by_cat.setdefault(r["category"], set()).add(r["size"])
-    sized = {c for c, s in sizes_by_cat.items() if s != {""}}
-    number_sizes = {s for r in rows for s in [r["size"]] if s.isdigit()}
-    categories = {r["category"] for r in rows}
-    colours = {r["colour"] for r in rows}
-    return brands, sized, number_sizes, categories, colours
-
-
-BRANDS, SIZED_CATEGORIES, NUMBER_SIZES, CATEGORIES, COLOURS = _load_catalogue_vocab()
-
-
-def _phrase_table():
-    table = {}
-
-    def add(phrase, slot, value):
-        table[tuple(phrase.lower().split())] = (slot, value)
-
-    for cat, phrases in CATEGORY_SYNONYMS.items():
-        assert cat in CATEGORIES, cat
-        for ph in phrases + [cat]:
-            add(ph, "category", cat)
-    for col, phrases in COLOUR_SYNONYMS.items():
-        assert col in COLOURS, col
-        for ph in phrases + [col]:
-            add(ph, "colour", col)
-    for b in BRANDS:
-        add(b, "brand", b)
-    for size, phrases in SIZE_WORDS.items():
-        for ph in phrases:
-            add(ph, "size", size)
-    return table
-
-
-PHRASES = _phrase_table()
-MAX_PHRASE = max(len(k) for k in PHRASES)
-
-# phrases that a longer phrase with a different meaning starts with ("light" -> "light blue");
-# only these stay open at the end of a prefix ("navy" -> "navy blue" means the same thing)
-GROWS_INTO_OTHER = {k[:j] for k, v in PHRASES.items() for j in range(1, len(k))
-                    if k[:j] in PHRASES and PHRASES[k[:j]] != v}
 
 # Words after which the next word is likely to change or complete a slot.
 PREFIX_WORDS = {"running", "jogging", "casual", "track", "bag", "wrist", "hooded", "pair", "t", "flip", "baseball",
@@ -100,7 +53,7 @@ class Token:
 
 @dataclass
 class Parse:
-    filters: dict = field(default_factory=lambda: {s: None for s in SLOTS})
+    filters: dict = field(default_factory=dict)
     set_at: dict = field(default_factory=dict)       # slot -> index of the token that last set it
     changes: dict = field(default_factory=dict)      # slot -> how many times it was set to a new value
     pending: bool = False                            # the prefix ends mid-thought
@@ -134,17 +87,47 @@ def tokenize(words):
 
 # ---------------------------------------------------------------- repairing unknown words
 
-def _vocab():
-    single = {k[0]: v for k, v in PHRASES.items() if len(k) == 1}
-    words = set(single) | {w for k in PHRASES for w in k}
-    known = (words | FILLER | BUDGET_CUES | CORRECTION_CUES | CURRENCY | SIZE_CUES | LEAD_CUES | PREFIX_WORDS
-             | set(UNITS) | set(HINDI_UNITS) | set(HINDI_FRACTIONS) | HALF_MORE | set(MULTIPLIERS) | set(GENERIC_HEADS))
-    return single, known
+class Vocab:
+    """The catalogue-specific tables the parser reads."""
+
+    def __init__(self, profile):
+        self.profile = profile
+        self.slots = tuple(profile.slots) + ("max_price",)
+        self.category = profile.roles.get("category")
+        self.colour = profile.roles.get("colour")
+        self.size = profile.roles.get("size")
+        self.phrases = profile.phrase_table()
+        self.max_phrase = max(len(k) for k in self.phrases)
+        # phrases that a longer phrase with a different meaning starts with ("light" -> "light blue");
+        # only these stay open at the end of a prefix ("navy" -> "navy blue" means the same thing)
+        self.grows_into_other = {k[:j] for k, v in self.phrases.items() for j in range(1, len(k))
+                                 if k[:j] in self.phrases and self.phrases[k[:j]] != v}
+        # word sequences that only start a phrase ("128" in "128 gb")
+        self.phrase_starts = {k[:j] for k in self.phrases for j in range(1, len(k))}
+        sizes = profile.values.get(self.size, set())
+        self.number_sizes = {s for s in sizes if s.isdigit()}
+        self.letter_sizes = {s for s in ("S", "M", "L") if s in sizes}
+        cats = profile.values.get(self.category, set())
+        self.generic = {w: h for w, h in GENERIC_HEADS.items() if all(c in cats for c in GENERIC_TARGETS[h])}
+        self.single = {k[0]: v for k, v in self.phrases.items() if len(k) == 1}
+        words = set(self.single) | {w for k in self.phrases for w in k}
+        self.known = (words | FILLER | BUDGET_CUES | CORRECTION_CUES | CURRENCY | SIZE_CUES | LEAD_CUES
+                      | PREFIX_WORDS | set(UNITS) | set(HINDI_UNITS) | set(HINDI_FRACTIONS) | HALF_MORE
+                      | set(MULTIPLIERS) | set(self.generic))
+        # typo targets: slot words of 4+ letters (short ones like "tan", "red" invite false repairs)
+        self.typo_targets = [w for w in self.single if len(w) >= 4 and w.isalpha()]
 
 
-_SINGLE, _KNOWN = _vocab()
-# typo targets: slot words of 4+ letters (short ones like "tan", "red" invite false repairs)
-_TYPO_TARGETS = [w for w in _SINGLE if len(w) >= 4 and w.isalpha()]
+_DEFAULT = None
+
+
+def default_vocab():
+    global _DEFAULT
+    if _DEFAULT is None:
+        _DEFAULT = Vocab(Profile.default())
+    return _DEFAULT
+
+
 _GLUED_SIZE = re.compile(r"^(uk|size|w|eu|us)(\d{1,2})$")
 
 
@@ -165,7 +148,7 @@ def _edits(a, b, limit):
     return prev[-1]
 
 
-def repair(tok):
+def repair(tok, v):
     """Read an unknown word as the slot word it most likely is. Returns the replacement tokens."""
     low = tok.low
     m = _GLUED_SIZE.match(low)                       # "UK9", "W32"
@@ -175,29 +158,29 @@ def repair(tok):
     if low.endswith("ish") and len(low) > 5:         # "bluish", "reddish", "greyish"
         stem = low[:-3]
         for cand in (stem, stem + "e", stem[:-1]):
-            if cand in _SINGLE and _SINGLE[cand][0] == "colour":
+            if cand in v.single and v.single[cand][0] == v.colour:
                 return [Token(cand, cand, tok.stop, True)]
     if len(low) >= 4 and low.isalpha():              # typos: "nevy", "whte", "biege", "headfones"
         limit = 1 if len(low) < 7 else 2
-        best = sorted((_edits(low, w, limit), w) for w in _TYPO_TARGETS if w[0] == low[0])
+        best = sorted((_edits(low, w, limit), w) for w in v.typo_targets if w[0] == low[0])
         top = [w for d, w in best if d == best[0][0]] if best and best[0][0] <= limit else []
-        if top and len({_SINGLE[w] for w in top}) == 1:   # one reading, even if several spellings fit
+        if top and len({v.single[w] for w in top}) == 1:   # one reading, even if several spellings fit
             w = top[0]
             return [Token(w, w, tok.stop, True)]
     return [tok]
 
 
-def normalise(toks):
+def normalise(toks, v):
     out = []
     for i, t in enumerate(toks):
         nxt = toks[i + 1].low if i + 1 < len(toks) else ""
         if t.low in ("do", "ek") and nxt in MULTIPLIERS:          # "do hazaar" = 2,000, "ek hazaar" = 1,000
-            v = "two" if t.low == "do" else "one"
-            out.append(Token(v, v, t.stop))
-        elif t.low in _KNOWN or _digit_value(t.low) is not None or t.raw in ("S", "M", "L"):
+            num = "two" if t.low == "do" else "one"
+            out.append(Token(num, num, t.stop))
+        elif t.low in v.known or _digit_value(t.low) is not None or t.raw in v.letter_sizes:
             out.append(t)
         else:
-            out.extend(repair(t))
+            out.extend(repair(t, v))
     return out
 
 
@@ -262,10 +245,11 @@ def parse_number(toks, i):
     return total + cur, used, money
 
 
-def parse(words, final=False):
+def parse(words, final=False, vocab=None):
     """final=True: the request is complete, so nothing at the end is still growing."""
-    toks = normalise(tokenize(words))
-    p = Parse(n=len(toks))
+    v = vocab or default_vocab()
+    toks = normalise(tokenize(words), v)
+    p = Parse(filters={s: None for s in v.slots}, n=len(toks))
     p.guessed = [t.low for t in toks if t.guessed]
 
     def put(slot, value, idx):
@@ -284,22 +268,22 @@ def parse(words, final=False):
         tok = toks[i]
         # 1. phrases, longest first
         hit = None
-        for n in range(min(MAX_PHRASE, len(toks) - i), 0, -1):
+        for n in range(min(v.max_phrase, len(toks) - i), 0, -1):
             key = tuple(t.low for t in toks[i:i + n])
-            if key in PHRASES and not any(t.stop for t in toks[i:i + n - 1]):
-                hit = (n, PHRASES[key])
+            if key in v.phrases and not any(t.stop for t in toks[i:i + n - 1]):
+                hit = (n, v.phrases[key])
                 break
         if hit:
             n, (slot, value) = hit
             put(slot, value, i + n - 1)
-            last_end_open = (i + n == len(toks)) and key in GROWS_INTO_OTHER
+            last_end_open = (i + n == len(toks)) and key in v.grows_into_other
             kinds += ["value"] * n
             last_value_at = i + n - 1
             i += n
             continue
         # 2. single uppercase letter sizes: "S", "M", "L"
-        if tok.raw in ("S", "M", "L"):
-            put("size", tok.raw, i)
+        if tok.raw in v.letter_sizes:
+            put(v.size, tok.raw, i)
             kinds.append("value")
             last_value_at = i
             i += 1
@@ -318,13 +302,15 @@ def parse(words, final=False):
             # of 1,000 if "five hundred" follows.
             last_end_open = not final and end == len(toks) and _digit_value(toks[end - 1].low) is None \
                 and not toks[end - 1].stop
-            if last_end_open and prev in SIZE_CUES and sv in NUMBER_SIZES:
+            if last_end_open and prev in SIZE_CUES and sv in v.number_sizes:
                 last_end_open = False      # "size eight" does not grow into "size eight hundred"
+            if not final and end == len(toks) and (tok.low,) in v.phrase_starts and not tok.stop:
+                last_end_open = True       # "128" may be the start of "128 gb"
             if not last_end_open:
                 if (value >= 100 or money) and not size_cued:
                     put("max_price", int(round(value)), end - 1)
-                elif sv in NUMBER_SIZES:
-                    put("size", sv, end - 1)
+                elif sv in v.number_sizes:
+                    put(v.size, sv, end - 1)
                 elif value >= 100:
                     put("max_price", int(round(value)), end - 1)
                 last_value_at = end - 1
@@ -332,8 +318,8 @@ def parse(words, final=False):
             i = end
             continue
         # 4. generic product words ("shoes", "pants"): used only if nothing more specific comes
-        if tok.low in GENERIC_HEADS:
-            generic.append(GENERIC_HEADS[tok.low])
+        if tok.low in v.generic:
+            generic.append(v.generic[tok.low])
             kinds.append("value")
             last_end_open = False
             i += 1
@@ -354,7 +340,7 @@ def parse(words, final=False):
         last_end_open = False
         i += 1
 
-    if generic and not p.filters["category"]:
+    if generic and v.category and not p.filters[v.category]:
         ctx = {t.low for t in toks}
         sporty = {"running", "run", "jogging", "jog", "sports", "sport", "gym", "marathon", "trail", "training",
                   "track", "sweat", "workout"}
@@ -362,7 +348,7 @@ def parse(words, final=False):
             guess = "running shoes" if ctx & sporty else "sneakers"
         else:
             guess = "jeans" if ctx & {"denim", "jean"} else "track pants"
-        p.filters["category"] = guess
+        p.filters[v.category] = guess
         p.guessed.append(guess)
 
     if toks:
@@ -372,11 +358,3 @@ def parse(words, final=False):
         p.open_correction = any(t.low in CORRECTION_CUES for t in toks[last_value_at + 1:])
         p.last_kind = kinds[-1] if kinds else ""
     return p
-
-
-def needed_slots(category):
-    """Slots a request needs before one product can be pinned down."""
-    need = ["category", "colour"]
-    if category in SIZED_CATEGORIES:
-        need.append("size")
-    return need

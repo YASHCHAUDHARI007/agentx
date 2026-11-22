@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShelfSense Live</title>
+<style>
+:root {
+  --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e4e2dc;
+  --accent: #1f6f5c; --accent-soft: #e3f1ec; --warn: #9a5b00; --warn-soft: #fbf0dc;
+  --chip: #f0efea; --hit: #fff4c2; --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141513; --panel: #1d1e1c; --ink: #ecebe6; --muted: #9c9b95; --line: #30312e;
+    --accent: #5cc3a5; --accent-soft: #1d3a32; --warn: #e3a64a; --warn-soft: #3a2d17;
+    --chip: #2a2b28; --hit: #4a4220; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141513; --panel: #1d1e1c; --ink: #ecebe6; --muted: #9c9b95; --line: #30312e;
+  --accent: #5cc3a5; --accent-soft: #1d3a32; --warn: #e3a64a; --warn-soft: #3a2d17;
+  --chip: #2a2b28; --hit: #4a4220; --shadow: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+h1 span { color: var(--accent); }
+.tag { color: var(--muted); font-size: 14px; }
+.controls { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+select, input, button { font: inherit; color: inherit; }
+select { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 18px; }
+.input-row { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; }
+.mic { width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--accent); color: #fff;
+  cursor: pointer; display: grid; place-items: center; flex: none; }
+.mic[disabled] { opacity: .35; cursor: not-allowed; }
+.mic.on { animation: pulse 1.4s infinite; background: #c0392b; }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(192,57,43,.5)} 70%{box-shadow:0 0 0 14px rgba(192,57,43,0)} 100%{box-shadow:0 0 0 0 rgba(192,57,43,0)} }
+.text { flex: 1 1 280px; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 0 14px; background: var(--bg); }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 0 16px; cursor: pointer; min-height: 44px; }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.hint { color: var(--muted); font-size: 13px; margin-top: 10px; min-height: 20px; }
+.grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-top: 16px; }
+@media (max-width: 820px) { .grid { grid-template-columns: 1fr; } .controls { margin-left: 0; } }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+.words { display: flex; flex-wrap: wrap; gap: 6px; min-height: 40px; }
+.w { padding: 3px 9px; border-radius: 7px; background: var(--chip); animation: pop .18s ease-out; }
+.w.value { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.w.commit { outline: 2px solid var(--accent); outline-offset: 1px; }
+.w.after { opacity: .55; }
+.w.pending { border: 1px dashed var(--muted); background: transparent; color: var(--muted); }
+@keyframes pop { from { transform: scale(.85); opacity: 0 } to { transform: none; opacity: 1 } }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; }
+.f { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; }
+.f b { font-weight: 600; } .f small { color: var(--muted); margin-right: 6px; }
+.f.changed { background: var(--hit); transition: background 1.2s; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.stat { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.stat .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.stat .k { font-size: 12px; color: var(--muted); }
+.card { border-radius: 12px; padding: 16px; border: 1px dashed var(--line); min-height: 170px; display: flex; flex-direction: column; justify-content: center; }
+.card.found { border: 2px solid var(--accent); background: var(--accent-soft); animation: pop .25s ease-out; justify-content: flex-start; }
+.card .empty { color: var(--muted); text-align: center; }
+.card h3 { margin: 4px 0 6px; font-size: 18px; }
+.card .price { font-size: 24px; font-weight: 700; }
+.card .attrs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.card .attrs span { background: var(--panel); border-radius: 6px; padding: 2px 8px; font-size: 13px; }
+.card .when { font-size: 14px; color: var(--accent); font-weight: 600; }
+.badge { align-self: flex-start; display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: #fff; }
+.final { margin-top: 12px; font-size: 14px; color: var(--muted); }
+.final.warn { color: var(--warn); }
+footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
+footer code { background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Shelf<span>Sense</span></h1>
+    <div class="tag">finds the product before you finish the sentence</div>
+    <div class="controls">
+      <select id="shop" aria-label="Shop"></select>
+      <select id="mode" aria-label="Commit mode">
+        <option value="auto">auto (safe for speech)</option>
+        <option value="next">next (punctuated text)</option>
+        <option value="speech">speech (strictest)</option>
+      </select>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="input-row">
+      <button id="mic" class="mic" title="Speak a request" aria-label="Speak a request">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5"/></svg>
+      </button>
+      <input id="text" class="text" placeholder="Type a request, e.g. show me navy Loomsy sneakers size 7 under 5000" autocomplete="off">
+      <button id="stream" class="btn primary">Stream it</button>
+      <button id="sample" class="btn">Try a sample</button>
+    </div>
+    <div id="hint" class="hint"></div>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <p class="label">What the agent hears</p>
+      <div id="words" class="words"></div>
+      <p class="label" style="margin-top:18px">What it understood</p>
+      <div id="filters" class="filters"></div>
+      <div class="stats">
+        <div class="stat"><div id="cands" class="v">–</div><div class="k">products still fit</div></div>
+        <div class="stat"><div id="lat" class="v">–</div><div class="k">ms per word (agent)</div></div>
+        <div class="stat"><div id="searches" class="v">0</div><div class="k">searches</div></div>
+      </div>
+    </section>
+    <section class="panel">
+      <p class="label">Product</p>
+      <div id="card" class="card"><div class="empty">The product appears here as soon as the agent is sure.</div></div>
+      <div id="final" class="final"></div>
+    </section>
+  </div>
+
+  <footer>Every word goes to the ShelfSense API (<code>POST /v1/sessions/{id}/words</code> or <code>/transcript</code> for speech). The agent commits only when no later word can change the answer except a correction, and waits while one could still come.</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { session: null, steps: [], commitAt: null, busy: false, lastFilters: {}, ms: [] };
+
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: { "Content-Type": "application/json" },
+                                 body: body === undefined ? undefined : JSON.stringify(body) });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+async function loadShops() {
+  const { shops } = await api("GET", "/v1/shops");
+  $("shop").innerHTML = shops.map(s => `<option value="${s.name}">${s.name} · ${s.products} products</option>`).join("");
+  placeholder();
+}
+function placeholder() {
+  $("text").placeholder = $("shop").value === "electronics"
+    ? "Type a request, e.g. Nexo blue mobile with 256 gigs under 50k"
+    : "Type a request, e.g. show me navy Loomsy sneakers size 7 under 5000";
+}
+
+function reset() {
+  Object.assign(state, { steps: [], commitAt: null, lastFilters: {}, ms: [], cands: null });
+  $("words").innerHTML = ""; $("filters").innerHTML = ""; $("final").textContent = "";
+  $("final").className = "final";
+  $("cands").textContent = "–"; $("lat").textContent = "–"; $("searches").textContent = "0";
+  $("card").className = "card";
+  $("card").innerHTML = '<div class="empty">The product appears here as soon as the agent is sure.</div>';
+}
+
+async function newSession() {
+  if (state.session) api("DELETE", `/v1/sessions/${state.session}`).catch(() => {});
+  reset();
+  const s = await api("POST", "/v1/sessions", { shop: $("shop").value, mode: $("mode").value });
+  state.session = s.session;
+}
+
+const rupees = (v) => "₹" + Number(v).toLocaleString("en-IN");
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
+
+function render(pendingWord) {
+  const prev = {};
+  $("words").innerHTML = state.steps.map((st) => {
+    const changed = Object.keys(st.filters).some(k => prev[k] !== st.filters[k]);
+    Object.assign(prev, st.filters);
+    const cls = ["w", changed ? "value" : "", st.n === state.commitAt ? "commit" : "",
+                 state.commitAt && st.n > state.commitAt ? "after" : ""].join(" ");
+    return `<span class="${cls}">${esc(st.word)}</span>`;
+  }).join("") + (pendingWord ? `<span class="w pending">${esc(pendingWord)}…</span>` : "");
+
+  const last = state.steps[state.steps.length - 1];
+  if (!last) return;
+  const f = last.filters;
+  $("filters").innerHTML = Object.entries(f).map(([k, v]) => {
+    const ch = state.lastFilters[k] !== v ? " changed" : "";
+    const shown = k === "max_price" ? "under " + rupees(v) : esc(v);
+    return `<span class="f${ch}"><small>${esc(k.replace("max_price", "budget"))}</small><b>${shown}</b></span>`;
+  }).join("") || '<span class="tag">nothing yet</span>';
+  state.lastFilters = { ...f };
+  if (last.candidates != null) state.cands = last.candidates;
+  else if (!state.commitAt) state.cands = null;
+  $("cands").textContent = state.cands == null ? "–" : state.cands;
+  if (state.ms.length) $("lat").textContent = (state.ms.reduce((a, b) => a + b, 0) / state.ms.length).toFixed(2);
+}
+
+function showCard(card, n) {
+  state.commitAt = n;
+  $("card").className = "card found";
+  const attrs = Object.entries(card.attributes).map(([k, v]) => `<span>${esc(k)}: ${esc(v)}</span>`).join("");
+  $("card").innerHTML = `<span class="badge">Found at word ${n}</span>
+    <h3>${esc(card.title)}</h3><div class="price">${rupees(card.price)}</div>
+    <div class="attrs">${attrs}</div><div class="when" id="when"></div>`;
+}
+
+function absorb(out) {
+  if (out.revised) { state.steps = []; state.commitAt = null; }
+  for (const st of out.steps) {
+    state.steps.push(st); state.ms.push(st.ms);
+    if (st.commit) showCard(st.commit, st.n);
+  }
+  $("searches").textContent = out.state.searches;
+  if (out.state.committed && !state.commitAt) showCard(out.state.committed, out.state.committed_at);
+}
+
+async function finish() {
+  const out = await api("POST", `/v1/sessions/${state.session}/finish`);
+  state.session = null;
+  const total = out.words;
+  if (out.committed && out.final && out.committed.id === out.final.id) {
+    const early = total - out.committed_at;
+    const w = $("when");
+    if (w) w.textContent = early > 0 ? `${early} of ${total} words before you finished` : "on your last word";
+    $("final").textContent = `Final answer confirmed: same product. ${out.searches} search${out.searches === 1 ? "" : "es"}.`;
+  } else if (out.final) {
+    if (!out.committed) showCard(out.final, total);
+    const w = $("when"); if (w) w.textContent = "after the request ended";
+    $("final").textContent = out.committed
+      ? "The final answer differs from the early one (a correction came late)."
+      : "The agent waited to the end: something could still have changed it.";
+    if (out.committed) $("final").className = "final warn";
+  } else {
+    $("final").textContent = "No product matches that request.";
+  }
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function streamText(text) {
+  if (state.busy || !text.trim()) return;
+  state.busy = true;
+  try {
+    await newSession();
+    $("hint").textContent = "Streaming one word at a time, as if spoken.";
+    for (const word of text.trim().split(/\s+/)) {
+      absorb(await api("POST", `/v1/sessions/${state.session}/words`, { words: [word] }));
+      render();
+      await sleep(320);
+    }
+    await finish();
+    render();
+    $("hint").textContent = "";
+  } catch (e) { $("hint").textContent = "Error: " + e.message; }
+  state.busy = false;
+}
+
+$("stream").onclick = () => streamText($("text").value);
+$("text").addEventListener("keydown", (e) => { if (e.key === "Enter") streamText($("text").value); });
+$("sample").onclick = async () => {
+  const { samples } = await api("GET", `/v1/shops/${$("shop").value}/samples?n=1`);
+  if (samples.length) { $("text").value = samples[0]; streamText(samples[0]); }
+};
+$("shop").onchange = () => { reset(); placeholder(); };
+
+// ------------------------------------------------ speech (Web Speech API, where the browser has it)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) {
+  $("mic").disabled = true;
+  $("mic").title = "Speech input needs Chrome or Edge";
+} else {
+  let rec = null, sending = Promise.resolve(), latest = "";
+  $("mic").onclick = async () => {
+    if (rec) { rec.stop(); return; }
+    if (state.busy) return;
+    state.busy = true;
+    await newSession();
+    rec = new SR();
+    rec.lang = "en-IN"; rec.interimResults = true; rec.continuous = true;
+    $("mic").classList.add("on");
+    $("hint").textContent = "Listening… speak a shopping request, then pause or tap the mic.";
+    rec.onresult = (ev) => {
+      let text = "", final = true;
+      for (const r of ev.results) { text += r[0].transcript + " "; if (!r.isFinal) final = false; }
+      latest = text.trim();
+      const words = latest.split(/\s+/);
+      sending = sending.then(async () => {
+        const out = await api("POST", `/v1/sessions/${state.session}/transcript`, { text: latest, final: false });
+        absorb(out); render(final ? null : words[words.length - 1]);
+      }).catch((e) => { $("hint").textContent = "Error: " + e.message; });
+    };
+    rec.onerror = (e) => { $("hint").textContent = "Microphone: " + e.error; };
+    rec.onend = async () => {
+      $("mic").classList.remove("on");
+      rec = null;
+      await sending;
+      try {
+        if (latest) {
+          absorb(await api("POST", `/v1/sessions/${state.session}/transcript`, { text: latest, final: true }));
+          render(); await finish(); render();
+        }
+      } catch (e) { $("hint").textContent = "Error: " + e.message; }
+      latest = ""; state.busy = false;
+      $("hint").textContent = "";
+    };
+    rec.start();
+  };
+}
+
+loadShops().catch((e) => { $("hint").textContent = "Cannot reach the ShelfSense API: " + e.message; });
+</script>
+</body>
+</html>
