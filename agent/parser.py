@@ -62,6 +62,11 @@ def _phrase_table():
 PHRASES = _phrase_table()
 MAX_PHRASE = max(len(k) for k in PHRASES)
 
+# phrases that a longer phrase with a different meaning starts with ("light" -> "light blue");
+# only these stay open at the end of a prefix ("navy" -> "navy blue" means the same thing)
+GROWS_INTO_OTHER = {k[:j] for k, v in PHRASES.items() for j in range(1, len(k))
+                    if k[:j] in PHRASES and PHRASES[k[:j]] != v}
+
 # Words after which the next word is likely to change or complete a slot.
 PREFIX_WORDS = {"running", "jogging", "casual", "track", "bag", "wrist", "hooded", "pair", "t", "flip", "baseball",
                 "laptop", "school", "light", "dark", "sky", "royal", "off", "baby", "jet", "bottle", "extra", "double",
@@ -287,7 +292,7 @@ def parse(words, final=False):
         if hit:
             n, (slot, value) = hit
             put(slot, value, i + n - 1)
-            last_end_open = (i + n == len(toks)) and n < MAX_PHRASE
+            last_end_open = (i + n == len(toks)) and key in GROWS_INTO_OTHER
             kinds += ["value"] * n
             last_value_at = i + n - 1
             i += n
@@ -313,6 +318,8 @@ def parse(words, final=False):
             # of 1,000 if "five hundred" follows.
             last_end_open = not final and end == len(toks) and _digit_value(toks[end - 1].low) is None \
                 and not toks[end - 1].stop
+            if last_end_open and prev in SIZE_CUES and sv in NUMBER_SIZES:
+                last_end_open = False      # "size eight" does not grow into "size eight hundred"
             if not last_end_open:
                 if (value >= 100 or money) and not size_cued:
                     put("max_price", int(round(value)), end - 1)

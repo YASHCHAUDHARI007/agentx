@@ -20,19 +20,29 @@ How a request flows:
 1. Every word, the whole prefix is parsed again into category, colour, brand, size and budget.
 2. Once category and colour are known, one counted search fetches every product of that category and colour. Brand, size and budget then narrow that list locally, so most requests need exactly one search.
 3. When one product alone fits what has been said, a later *new* constraint cannot change it; only a correction can.
-4. Commit rule: if the shopper has already corrected something, commit at once (requests correct themselves at most once in dev). Otherwise wait for one plain filler word ("for my brother", "thanks", "please") after the match became unique, and never while a correction word is still waiting for its new value.
+4. Commit rule (`policy.py`): if the shopper has already corrected something, commit at once (requests correct themselves at most once in dev). If a budget number made the match unique mid-sentence, commit at once. Otherwise wait one more word: filler ("for my brother", "thanks") or a value with no punctuation after it. A word ending in "." or "," never counts, because corrections almost always open a new clause ("size 8, | I mean size 7"). Never commit while a correction word is still waiting for its new value.
 
-Knobs (environment variables): `AGENT_WAIT_WORDS` (default 1) and `AGENT_MAX_SEARCHES` (default 3, the per-request search cap).
+Knobs (environment variables): `AGENT_COMMIT_MODE` (`safe`, `next` (default) or `instant`, see below), `AGENT_WAIT_WORDS` (default 1) and `AGENT_MAX_SEARCHES` (default 3, the per-request search cap).
 
 ## Results
 
 | Test set | Requests | Score | Accuracy | Wrong commits | Earliness | Searches |
 |---|---|---|---|---|---|---|
 | Kit baseline on dev | 300 | 20.0 | 0.527 | 0 | 0% | 1.53 |
-| **dev.jsonl** (kit) | 300 | **43.1** | 1.000 | 0 | 5.4% (best possible 16.3%) | 1.04 |
-| Stress set (our generator, used for tuning) | 600 | 42.1 | 1.000 | 0 | 3.7% | 1.03 |
-| **Holdout** (fresh phrasings and seed) | 600 | **41.4** | 0.997 | 1 | 3.0% | 1.03 |
+| **dev.jsonl** (kit) | 300 | **44.5** | 1.000 | 0 | 7.6% (best possible 16.3%) | 1.04 |
+| Stress set (our generator, used for tuning) | 600 | 43.2 | 1.000 | 0 | 5.4% | 1.03 |
+| **Holdout** (fresh phrasings and seed) | 600 | **42.5** | 0.997 | 1 | 4.7% | 1.03 |
 | Stress set *before* the robustness fixes | 600 | 36.4 | 0.867 | 0 | 2.9% | 1.02 |
+
+Commit modes compared (score on dev / stress / holdout, wrong commits in brackets):
+
+| `AGENT_COMMIT_MODE` | dev | stress | holdout |
+|---|---|---|---|
+| `safe` (wait for one filler word; the earlier policy) | 43.1 (0) | 42.1 (0) | 41.4 (1) |
+| `next` (default) | **44.5 (0)** | **43.2 (0)** | **42.5 (1)** |
+| `instant` (commit at once on any value mid-sentence) | 44.9 (3) | 44.4 (2) | 43.3 (4) |
+
+`instant` scores higher but makes wrong commits, which the brief targets at zero and the organisers report separately, so `next` is the default. Per-word latency is about 0.03 ms.
 
 The two test sets come from `tests/stress/make_stress.py`: catalogue-based requests in the dev format with wording the parser was not written for (typos like "nevy", "-ish" colours, "UK9", "W32", "smol", "do hazaar", "tee shirt", new openers, closers and correction phrases). The holdout set uses a different seed and a separate bank of phrasings; it was used once to find the two commit-safety fixes (words opening a new clause, and words like "brand" that hang off a value, no longer count as the request winding down), so treat its numbers as slightly optimistic too.
 
@@ -66,9 +76,9 @@ Testing the wiring without a key: `REZOLVE_MOCK=1 python3 evaluate.py --agent ..
 
 | Holdout (600) | Score | Accuracy | Wrong commits | Searches |
 |---|---|---|---|---|
-| Offline | 41.4 | 0.997 | 1 | 1.033 |
-| Stand-in fallback | 41.5 | 1.000 | 1 | 1.037 |
+| Offline | 42.5 | 0.997 | 1 | 1.033 |
+| Stand-in fallback | 42.6 | 1.000 | 1 | 1.037 |
 
-Dev and stress scores are unchanged (43.1 and 42.1): no request there triggers the fallback.
+Dev and stress scores are unchanged by the fallback: no request there triggers it.
 
 Safety design: any word the parser does not know, or only guessed at (a repaired typo, an "-ish" colour, a generic word like "shoes"), rules out an early commit for that request; the final answer still uses the guess.

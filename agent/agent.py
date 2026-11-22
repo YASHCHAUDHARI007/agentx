@@ -95,6 +95,7 @@ class Agent:
         out = {"filters": p.known(), "confidence": 0.0}
         if self.committed:
             return out
+        clause_end = bool(re.search(r"[.,!?;:]$", word))
 
         # a slot changing value (a correction) resets everything we believed
         changed = any(self.prev_filters.get(k) not in (None, v) for k, v in p.known().items())
@@ -107,7 +108,9 @@ class Agent:
             if pid == self.unique:
                 # only plain filler ("for my brother", "thanks", "please") counts as the request
                 # winding down; new values and cue words do not
-                if not p.pending and not p.open_correction and p.last_kind == "filler":
+                settled = p.last_kind == "filler" or (
+                    self.policy.mode != "safe" and p.last_kind == "value" and not clause_end)
+                if not p.pending and not p.open_correction and settled:
                     self.held += 1
             else:
                 self.unique, self.held = pid, 0
@@ -115,7 +118,7 @@ class Agent:
             self.unique, self.held = None, 0
 
         if self.unique:
-            conf = self.policy.confidence(p, self.held)
+            conf = self.policy.confidence(p, self.held, clause_end=clause_end)
             out["confidence"] = conf
             if conf >= self.policy.threshold:
                 self.committed = self.unique

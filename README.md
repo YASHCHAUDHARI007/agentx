@@ -6,9 +6,10 @@ Our entry for **AgentX: The Agentic Commerce Challenge** (Techfest 2026-27, IIT 
 
 | | Kit baseline | ShelfSense |
 |---|---|---|
-| Score on `dev.jsonl` | 20.0 | **43.1** |
+| Score on `dev.jsonl` | 20.0 | **44.5** |
 | Accuracy | 0.527 | **1.000** |
 | Wrong commits | 0 | **0** |
+| Earliness (best possible 16.3%) | 0% | 7.6% |
 | Searches per request | 1.53 | 1.04 |
 
 ```bash
