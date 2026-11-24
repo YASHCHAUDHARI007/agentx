@@ -231,6 +231,11 @@ async function finish() {
   } else {
     $("final").textContent = "No product matches that request.";
   }
+  if (out.rezolve && out.rezolve.length) {
+    const r = out.rezolve[0];
+    $("final").textContent += ` Rezolve Labs semantic search was asked (${r.reason})` +
+      (r.answer ? ` and its answer was used.` : ", but returned nothing.");
+  }
 }
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));

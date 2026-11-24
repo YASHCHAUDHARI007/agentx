@@ -28,6 +28,7 @@ python3 server/app.py        # then open http://localhost:8080
 - `tools/build_profile.py`, `tools/evaluate_catalogue.py`: onboard and score any shop's catalogue
 - `tests/`: regression tests, stress and holdout sets, and a second (electronics) catalogue
 - `tools/rezolve_setup.py`: uploads the catalogue to Rezolve Labs once you have an API key
+- [`submission/`](submission/README.md): Round 1 package (abstract, architecture note, dev outputs, video script)
 - [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md): research, challenge comparison and plan
 - `starter_kit/`: the organisers' starter kits for both challenges
 

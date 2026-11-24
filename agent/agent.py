@@ -98,7 +98,9 @@ class Agent:
     def observe(self, word):
         self.words.append(word)
         p = parse(self.words, vocab=self.vocab)
-        out = {"filters": p.known(), "confidence": 0.0}
+        # report the best guess, counting a number that may still grow ("under two thousand ...");
+        # decisions below use the cautious reading p, which leaves it out until it is complete
+        out = {"filters": parse(self.words, final=True, vocab=self.vocab).known(), "confidence": 0.0}
         if self.committed:
             return out
         clause_end = bool(re.search(r"[.,!?;:]$", word))

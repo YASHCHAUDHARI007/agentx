@@ -22,6 +22,7 @@ product card once the agent commits, and the time the agent took.
 """
 import argparse
 import json
+import os
 import random
 import re
 import secrets
@@ -174,6 +175,7 @@ class Session:
         st["early_share"] = round((len(self.words) - self.committed[1]) / len(self.words), 3) \
             if self.committed and self.words and pid == self.committed[0] else 0.0
         st["changed_after_commit"] = bool(self.committed and pid != self.committed[0])
+        st["rezolve"] = [{"reason": reason, "answer": answer} for _, reason, answer in self.agent.fallback_log]
         return st
 
 
@@ -419,6 +421,9 @@ def make_server(host="127.0.0.1", port=8080, shops=None, log_path=None):
     SHOPS.clear()
     SHOPS.update(shops if shops is not None else load_shops(None))
     REZOLVE = RezolveClient.from_env()
+    if REZOLVE is None and os.environ.get("REZOLVE_MOCK"):     # local stand-in, for testing the page only
+        from rezolve_mock import MockRezolve
+        REZOLVE = MockRezolve(Profile.load(KIT_CATALOGUE))
     LOG = open(log_path, "a", encoding="utf-8") if log_path else None
     return ThreadingHTTPServer((host, port), Handler)
 

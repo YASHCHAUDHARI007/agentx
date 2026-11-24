@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ShelfSense Architecture Note</title>
+<style>
+@page { size: A4; margin: 11mm 12mm; }
+:root { --ink: #1b1b19; --muted: #5d5c57; --line: #d9d7d0; --accent: #1f6f5c; --soft: #e6f2ee; --warm: #f6f1e6; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: #fff; font: 8.6pt/1.36 "Helvetica Neue", Helvetica, Arial, sans-serif; }
+h1 { font-size: 15pt; margin: 0; letter-spacing: -.01em; }
+h1 span { color: var(--accent); }
+.sub { color: var(--muted); margin: 1px 0 7px; font-size: 8.6pt; }
+h2 { font-size: 9.4pt; margin: 7px 0 3px; color: var(--accent); text-transform: uppercase; letter-spacing: .05em; }
+p { margin: 0 0 4px; }
+ul { margin: 0 0 4px; padding-left: 13px; }
+li { margin: 0 0 2px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 8pt; margin: 2px 0 4px; }
+th, td { text-align: left; padding: 2px 4px; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--muted); }
+td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.diagram { border: 1px solid var(--line); border-radius: 6px; padding: 4px; margin: 2px 0 2px; }
+svg text { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.box { background: var(--warm); border-radius: 5px; padding: 5px 7px; margin: 4px 0; }
+.rz { background: var(--soft); border-left: 3px solid var(--accent); }
+code { font-family: Menlo, monospace; font-size: 7.6pt; }
+b { font-weight: 650; }
+</style>
+</head>
+<body>
+<h1>Shelf<span>Sense</span>: architecture note</h1>
+<p class="sub">AgentX Challenge 1, Anticipatory Commerce · finds the product before the shopper finishes the sentence · github.com/YASHCHAUDHARI007/shelfsense</p>
+
+<div class="diagram">
+<svg viewBox="0 0 760 150" width="100%" role="img" aria-label="Per-word pipeline from words to commit or wait, with Rezolve Labs fallback at the end">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5d5c57"/></marker></defs>
+  <g font-size="10.5">
+    <rect x="4" y="22" width="92" height="56" rx="6" fill="#f6f1e6" stroke="#d9d7d0"/>
+    <text x="50" y="42" text-anchor="middle" font-weight="700">Words</text>
+    <text x="50" y="57" text-anchor="middle" fill="#5d5c57" font-size="9">typed, or live</text>
+    <text x="50" y="69" text-anchor="middle" fill="#5d5c57" font-size="9">speech-to-text</text>
+
+    <rect x="118" y="10" width="138" height="80" rx="6" fill="#fff" stroke="#1f6f5c" stroke-width="1.4"/>
+    <text x="187" y="28" text-anchor="middle" font-weight="700">1 Parser</text>
+    <text x="187" y="44" text-anchor="middle" font-size="9">re-reads the whole prefix</text>
+    <text x="187" y="56" text-anchor="middle" font-size="9">last mention wins</text>
+    <text x="187" y="68" text-anchor="middle" font-size="9">typos · Hinglish · numbers</text>
+    <text x="187" y="80" text-anchor="middle" font-size="9" fill="#5d5c57">→ filters, pending, unknown</text>
+
+    <rect x="278" y="10" width="148" height="80" rx="6" fill="#fff" stroke="#1f6f5c" stroke-width="1.4"/>
+    <text x="352" y="28" text-anchor="middle" font-weight="700">2 Search manager</text>
+    <text x="352" y="44" text-anchor="middle" font-size="9">1 counted search for</text>
+    <text x="352" y="56" text-anchor="middle" font-size="9">category + colour (k=200)</text>
+    <text x="352" y="68" text-anchor="middle" font-size="9">brand, size, budget: local</text>
+    <text x="352" y="80" text-anchor="middle" font-size="9" fill="#5d5c57">→ products that still fit</text>
+
+    <rect x="448" y="10" width="160" height="80" rx="6" fill="#fff" stroke="#1f6f5c" stroke-width="1.4"/>
+    <text x="528" y="28" text-anchor="middle" font-weight="700">3 Commit policy</text>
+    <text x="528" y="44" text-anchor="middle" font-size="9">exactly one fits, and</text>
+    <text x="528" y="56" text-anchor="middle" font-size="9">no correction can still come?</text>
+    <text x="528" y="68" text-anchor="middle" font-size="9">clause end · cues · unknown</text>
+    <text x="528" y="80" text-anchor="middle" font-size="9">words · text vs speech</text>
+
+    <rect x="630" y="10" width="124" height="34" rx="6" fill="#e6f2ee" stroke="#1f6f5c"/>
+    <text x="692" y="31" text-anchor="middle" font-weight="700" fill="#1f6f5c">commit product</text>
+    <rect x="630" y="56" width="124" height="34" rx="6" fill="#f6f1e6" stroke="#d9d7d0"/>
+    <text x="692" y="77" text-anchor="middle" font-weight="700">wait for next word</text>
+
+    <path d="M96 50 H116" stroke="#5d5c57" marker-end="url(#a)"/>
+    <path d="M256 50 H276" stroke="#5d5c57" marker-end="url(#a)"/>
+    <path d="M426 50 H446" stroke="#5d5c57" marker-end="url(#a)"/>
+    <path d="M608 40 L628 28" stroke="#5d5c57" marker-end="url(#a)"/>
+    <path d="M608 60 L628 72" stroke="#5d5c57" marker-end="url(#a)"/>
+
+    <rect x="118" y="106" width="138" height="38" rx="6" fill="#f6f1e6" stroke="#d9d7d0"/>
+    <text x="187" y="122" text-anchor="middle" font-weight="700" font-size="9.5">Catalogue profile</text>
+    <text x="187" y="135" text-anchor="middle" font-size="8.6" fill="#5d5c57">any shop's CSV + synonyms</text>
+    <path d="M187 106 V92" stroke="#5d5c57" marker-end="url(#a)"/>
+
+    <rect x="278" y="106" width="330" height="38" rx="6" fill="#e6f2ee" stroke="#1f6f5c"/>
+    <text x="443" y="122" text-anchor="middle" font-weight="700" font-size="9.5" fill="#1f6f5c">finish(): final reading → Rezolve Labs semantic search</text>
+    <text x="443" y="135" text-anchor="middle" font-size="8.6">only if no unique local match (unknown product word, guessed category)</text>
+    <text x="692" y="122" text-anchor="middle" font-size="9" fill="#5d5c57">end of request</text>
+    <path d="M630 125 H610" stroke="#5d5c57" marker-end="url(#a)"/>
+  </g>
+</svg>
+</div>
+
+<div class="cols">
+<div>
+<h2>Why it does not commit wrong</h2>
+<p><b>Key invariant.</b> Once exactly one product fits everything said, a <i>new</i> constraint can only confirm it; only a <i>correction</i> can change it. So the per-word decision is not "how confident am I in this product?" but "could a correction still come?". A wrong commit costs 1.0, more than the best possible gain from a request, so the policy only commits when that risk is near zero.</p>
+<ul>
+<li><b>Commit at once</b> if a correction already happened (dev requests correct themselves at most once), or a budget number made the match unique mid-sentence (150 of 150 right).</li>
+<li><b>Otherwise wait one word</b> that is filler or an unpunctuated value. Words ending in "." or "," never count: corrections open a new clause ("size 8, | I mean 7").</li>
+<li><b>Never</b> while a correction cue awaits its value ("no, change that to"), the prefix ends mid-thought ("under", "one thousand"), or a word was unknown or only guessed.</li>
+<li><b>Speech-aware (<code>auto</code>, default).</b> Raw speech-to-text has no punctuation, so a correction can follow a complete request directly. Until a request shows punctuation, only filler counts and nothing commits at once. On speech-style input this cut wrong commits from 19 to 1, for 0.4 points on punctuated dev.</li>
+</ul>
+
+<h2>Parser</h2>
+<p>Re-parses the whole prefix every word (microseconds), so corrections need no special state: the last mention of a slot wins. Longest-phrase match over the profile's phrase table; numbers ≥100 are budgets, real sizes are sizes; word numbers stay open while they can still grow ("two thousand … five hundred"). Repairs typos (Damerau-Levenshtein, one reading only), glued sizes ("UK9"), "-ish" colours and Hinglish numbers ("do hazaar", "dhai hazaar tak").</p>
+
+<h2>Any catalogue</h2>
+<p><code>catalogue.py</code> detects the id, price, title and filter columns and their roles from a shop's CSV, and builds every phrase for every value: English/Hinglish packs, automatic variants ("128GB"/"128 gigs", "t-shirt"/"tshirt", plurals), and the shop's own synonyms. Each shop gets its own <code>Vocab</code>, so one process serves many shops.</p>
+
+<h2>How we tested</h2>
+<ul>
+<li><b>Stress set:</b> generated dev-format requests with wording the parser was not written for ("nevy", "UK9", "smol", new correction phrases).</li>
+<li><b>Holdout:</b> separate phrases and seed; used once to find two safety fixes, so slightly optimistic.</li>
+<li><b>Speech-style:</b> sets re-run with punctuation stripped. The electronics shop (different columns, unit values) exposed the punctuation risk that led to <code>auto</code>.</li>
+<li>Every wrong commit read by hand; fixes kept only if no set got worse.</li>
+</ul>
+</div>
+
+<div>
+<h2>Results</h2>
+<table>
+<tr><th>Set (requests)</th><th>Score</th><th>Accuracy</th><th>Wrong</th><th>Searches</th></tr>
+<tr><td>Kit baseline, dev (300)</td><td class="n">20.0</td><td class="n">0.527</td><td class="n">0</td><td class="n">1.53</td></tr>
+<tr><td><b>ShelfSense, dev (300)</b></td><td class="n"><b>44.1</b></td><td class="n"><b>1.000</b></td><td class="n"><b>0</b></td><td class="n">1.04</td></tr>
+<tr><td>Stress, unseen phrasings (600)</td><td class="n">42.6</td><td class="n">1.000</td><td class="n">0</td><td class="n">1.03</td></tr>
+<tr><td>Holdout, fresh seed (600)</td><td class="n">41.8</td><td class="n">0.997</td><td class="n">1</td><td class="n">1.03</td></tr>
+<tr><td>Dev without punctuation (300)</td><td class="n">43.1</td><td class="n">1.000</td><td class="n">1</td><td class="n">1.04</td></tr>
+<tr><td>Electronics catalogue (300)</td><td class="n">41.9</td><td class="n">1.000</td><td class="n">1</td><td class="n">1.06</td></tr>
+</table>
+<p>Dev: earliness 7.0% of the request (best possible 16.3%); filters at the last word 1.00 for category, colour, size, brand and budget. Earlier "instant" commits score 44.9 but make wrong commits, so they are off by default.</p>
+
+<h2>Latency, cost, scale</h2>
+<ul>
+<li>0.04 ms per word (p95 0.16 ms); 0.41 ms CPU per request including search; about 2,400 requests/s per core. No language-model calls at run time.</li>
+<li>1.04 searches per request: one fetch of category + colour, then local narrowing. Re-reading a revised speech transcript reuses cached searches.</li>
+<li>Service: Python standard library HTTP API, with sessions, <code>/words</code> and <code>/transcript</code> (interim words held until they settle, revised words re-read), <code>/metrics</code>, a decision log, a Docker image, and 11 automated tests.</li>
+</ul>
+
+<div class="box rz">
+<h2 style="margin-top:0">Rezolve Labs capabilities used</h2>
+<ul>
+<li><b>Managed knowledge retrieval:</b> the catalogue CSV is uploaded once as a knowledge-base document (<code>tools/rezolve_setup.py</code>).</li>
+<li><b>Semantic product search</b> (<code>/product-discovery/search</code>, with filters and <code>price_lte</code>): the fallback in <code>finish()</code> when the parser cannot pin one product (unknown product words, guessed categories). It is sent only the filters the agent is sure of, prefers results that agree with the local reading, and every call is counted as a search. Clean requests never call it: 0 of 300 dev requests.</li>
+<li><b>Status:</b> client, setup and fallback are built and tested with a local stand-in; live calls need the team's Rezolve Labs API key. Without a key, or on any API error, the agent runs offline unchanged.</li>
+<li><b>Next:</b> Rezolve live transcription for the voice demo, and semantic search as the main retrieval for catalogues too large to narrow locally.</li>
+</ul>
+</div>
+</div>
+</div>
+</body>
+</html>
