@@ -22,13 +22,17 @@ python3 evaluate.py --agent ../../agent/agent.py
 Live demo and API (speak or type a request, watch the product appear before you finish):
 
 ```bash
+make web                     # once: build the Next.js front end (needs Node.js 20+)
 python3 server/app.py        # then open http://localhost:8080
 ```
 
+Without Node.js, `python3 server/app.py` serves a single-file version of the same page.
+
 - [`agent/`](agent/README.md): the agent (parser, commit policy, search, and the Rezolve Labs fallback)
-- [`server/`](server/README.md): streaming HTTP API with speech support, and the live demo page
+- [`server/`](server/README.md): streaming HTTP API with speech support
+- [`web/`](web/README.md): the live demo, Next.js (React, TypeScript), served by the Python service as static files
 - `tools/build_profile.py`, `tools/evaluate_catalogue.py`: onboard and score any shop's catalogue
-- `tests/`: 41 tests (parser, commit policy, Rezolve resilience, API, score floors), stress and holdout sets, and a second (electronics) catalogue
+- `tests/`: 44 tests (parser, commit policy, Rezolve resilience, API, score floors), stress and holdout sets, and a second (electronics) catalogue
 - `tools/rezolve_setup.py`: uploads the catalogue to Rezolve Labs once you have an API key
 - [`submission/`](submission/README.md): Round 1 package (abstract, architecture note, dev outputs, video script)
 - [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md): research, challenge comparison and plan
@@ -40,7 +44,7 @@ Rezolve Labs semantic search is the fallback for requests the parser can't pin d
 
 ## Production readiness
 
-- **CI** on every push ([workflow](.github/workflows/ci.yml)): tests on Python 3.10, 3.12 and 3.13; the official evaluator on dev with a **score gate** (fails below 44.0 or on any wrong commit); and the Docker image built, started and checked end to end.
+- **CI** on every push ([workflow](.github/workflows/ci.yml)): tests on Python 3.10, 3.12 and 3.13; the front end linted, type-checked and built; the official evaluator on dev with a **score gate** (fails below 44.0 or on any wrong commit); and the Docker image built, started and checked end to end.
 - **Service**: API keys, per-client rate limits, a cap on open sessions, request ids, security headers, graceful shutdown, Prometheus metrics and an [OpenAPI 3.1 contract](server/openapi.json). All off-by-default settings are environment variables ([server/README.md](server/README.md#production-settings)).
 - **Rezolve Labs** calls retry transient failures and stop for 30 s after repeated ones (circuit breaker), so an outage never slows the shopper; every attempt is counted as a search.
 
@@ -50,4 +54,4 @@ make gate     # official evaluator + score gate
 make serve    # demo on http://localhost:8080
 ```
 
-Python 3.10+, standard library only. MIT licence.
+Agent and service: Python 3.10+, standard library only. Front end: Next.js 16, React 19, TypeScript. MIT licence.

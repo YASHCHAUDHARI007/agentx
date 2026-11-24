@@ -23,10 +23,15 @@ Every word update returns the current reading: filters, how many products still 
 product card once the agent commits, and the time the agent took.
 
 Production settings (environment): SHELFSENSE_API_KEYS, SHELFSENSE_RATE, SHELFSENSE_TRUST_PROXY
-(see guard.py), SHELFSENSE_MAX_SESSIONS (default 1000). Every response carries an X-Request-Id.
+(see guard.py), SHELFSENSE_MAX_SESSIONS (default 1000), SHELFSENSE_CORS_ORIGINS (comma-separated
+origins allowed to call the API from another origin, e.g. http://localhost:3000 for `next dev`).
+Every response carries an X-Request-Id.
+
+The page at / is the Next.js app in web/ once built (web/out), else server/static/index.html.
 """
 import argparse
 import json
+import mimetypes
 import os
 import random
 import re
@@ -39,7 +44,7 @@ import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
@@ -54,6 +59,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from guard import ApiKeys, RateLimiter, client_address  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / "static"
+WEB_BUILD = ROOT / "web" / "out"            # the Next.js front end, after `npm run build` in web/
+
+
+def web_root():
+    """The Next.js build when there is one, else the single-file page (no Node.js needed)."""
+    return WEB_BUILD if (WEB_BUILD / "index.html").is_file() else STATIC
 DEFAULT_SHOPS = {
     "fashion": (ROOT / "starter_kit/ps1-anticipatory-commerce/catalogue.csv", None,
                 ROOT / "starter_kit/ps1-anticipatory-commerce/dev.jsonl"),
@@ -331,13 +342,34 @@ class Handler(BaseHTTPRequestHandler):
 
     # -------------------------------------------------- plumbing
 
-    def _send(self, status, body, ctype="application/json", headers=None):
+    def _cors(self):
+        origin = self.headers.get("Origin")
+        if origin and origin in CORS_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Expose-Headers", "X-Request-Id, Retry-After")
+
+    def do_OPTIONS(self):
+        """CORS preflight, for a front end served from another origin (next dev)."""
+        self.request_id = uuid.uuid4().hex[:16]
+        allowed = self.headers.get("Origin") in CORS_ORIGINS
+        self.send_response(204 if allowed else 403)
+        if allowed:
+            self._cors()
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, X-API-Key, Authorization, X-Request-Id")
+            self.send_header("Access-Control-Max-Age", "600")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _send(self, status, body, ctype="application/json", headers=None, cache="no-store"):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache)
         self.send_header("X-Request-Id", self.request_id)
+        self._cors()
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         if ctype.startswith("text/html"):
@@ -374,8 +406,8 @@ class Handler(BaseHTTPRequestHandler):
         return s
 
     def _guard(self, parts):
-        """API key and rate limit for everything except the page, its files and /health."""
-        if not parts or parts[0] in ("static", "health", "openapi.json"):
+        """API key and rate limit for the API and metrics; the page, its files and /health are open."""
+        if not parts or parts[0] not in ("v1", "metrics"):
             return
         key = KEYS.check(self.headers)
         if key is None:
@@ -420,10 +452,6 @@ class Handler(BaseHTTPRequestHandler):
     # -------------------------------------------------- routes
 
     def _route(self, method, parts, query):
-        if method == "GET" and not parts:
-            return self._static("index.html")
-        if method == "GET" and parts[0] == "static" and len(parts) == 2:
-            return self._static(parts[1])
         if method == "GET" and parts == ["health"]:
             return {"ok": True, "version": VERSION, "shops": sorted(SHOPS)}
         if method == "GET" and parts == ["openapi.json"]:
@@ -435,6 +463,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, METRICS.prometheus().encode(), "text/plain; version=0.0.4; charset=utf-8")
             return METRICS.snapshot()
         if parts[:1] != ["v1"]:
+            if method == "GET":
+                return self._static(parts)
             raise ApiError(404, "not found")
         parts = parts[1:]
 
@@ -505,18 +535,38 @@ class Handler(BaseHTTPRequestHandler):
     def _no_shop(self, name):
         raise ApiError(404, f"unknown shop {name!r}; loaded: {sorted(SHOPS)}")
 
-    def _static(self, name):
-        if not re.fullmatch(r"[\w.-]+", name):
+    STATIC_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+                    ".css": "text/css; charset=utf-8", ".txt": "text/plain; charset=utf-8",
+                    ".svg": "image/svg+xml", ".ico": "image/x-icon", ".json": "application/json",
+                    ".woff2": "font/woff2", ".png": "image/png", ".webp": "image/webp"}
+
+    def _static(self, parts):
+        """A file of the front end. Paths are checked part by part and must stay inside the root."""
+        root = web_root()
+        parts = [unquote(p) for p in parts]
+        if any(p.startswith(".") or "/" in p or "\\" in p or "\0" in p for p in parts):
             raise ApiError(404, "not found")
-        path = STATIC / name
-        if not path.is_file():
-            raise ApiError(404, "not found")
-        ctype = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
-                 ".svg": "image/svg+xml"}.get(path.suffix, "application/octet-stream")
-        self._send(200, path.read_bytes(), ctype)
+        path = root.joinpath(*parts) if parts else root / "index.html"
+        if path.is_dir():
+            path = path / "index.html"
+        elif not path.is_file() and path.with_suffix(".html").is_file():
+            path = path.with_suffix(".html")          # /about -> about.html, as Next.js exports it
+        try:
+            path = path.resolve(strict=True)
+            path.relative_to(root.resolve())
+        except (FileNotFoundError, ValueError):
+            missing = root / "404.html"
+            if missing.is_file() and not parts[:1] == ["_next"]:
+                return self._send(404, missing.read_bytes(), "text/html; charset=utf-8")
+            raise ApiError(404, "not found") from None
+        ctype = self.STATIC_TYPES.get(path.suffix) or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        # Next.js puts a content hash in every file name under /_next/static: safe to cache for good
+        cache = "public, max-age=31536000, immutable" if parts[:2] == ["_next", "static"] else "no-cache"
+        self._send(200, path.read_bytes(), ctype, cache=cache)
 
 
 REZOLVE = None
+CORS_ORIGINS = set()
 
 
 def load_shops(specs):
@@ -534,7 +584,8 @@ def load_shops(specs):
 
 def make_server(host="127.0.0.1", port=8080, shops=None, log_path=None, keys=None, rate=None):
     """keys / rate override SHELFSENSE_API_KEYS / SHELFSENSE_RATE (tests use them)."""
-    global LOG, REZOLVE, KEYS, LIMITER
+    global LOG, REZOLVE, KEYS, LIMITER, CORS_ORIGINS
+    CORS_ORIGINS = {o.strip().rstrip("/") for o in os.environ.get("SHELFSENSE_CORS_ORIGINS", "").split(",") if o.strip()}
     KEYS = ApiKeys(keys)
     LIMITER = RateLimiter(rate)
     SHOPS.clear()
@@ -562,6 +613,7 @@ def main():
     print(f"Rezolve Labs fallback: {'on' if REZOLVE else 'off (no REZOLVE_API_KEY)'}")
     print(f"API keys: {'required' if KEYS.enabled else 'off (set SHELFSENSE_API_KEYS to require them)'}; "
           f"rate limit: {f'{LIMITER.rate:g}/s per client' if LIMITER.rate > 0 else 'off'}")
+    print(f"front end: {'Next.js build (web/out)' if web_root() == WEB_BUILD else 'single-file page (build web/ for the Next.js app)'}")
     print(f"ShelfSense {VERSION} listening on http://{args.host}:{args.port}", flush=True)
 
     def stop(*_):                           # docker stop / Kubernetes send SIGTERM: finish in-flight requests

@@ -4,3 +4,6 @@
 .claude
 starter_kit/ps2-selling-to-machines
 docs
+web/node_modules
+web/.next
+web/out

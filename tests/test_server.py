@@ -109,6 +109,44 @@ class Api(unittest.TestCase):
         with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/") as r:
             self.assertIn("frame-ancestors 'none'", r.headers["Content-Security-Policy"])
 
+    def test_static_files_stay_inside_the_root(self):
+        for path in ("/static/../app.py", "/..%2fapp.py", "/%2e%2e/server/app.py", "/.env", "/_next/%2e%2e/%2e%2e/.env"):
+            with self.subTest(path):
+                req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}")
+                with self.assertRaises(urllib.error.HTTPError) as e:
+                    urllib.request.urlopen(req)
+                self.assertEqual(e.exception.code, 404)
+
+    def test_front_end_assets(self):
+        root = app.web_root()
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/") as r:
+            self.assertIn(b"ShelfSense", r.read())
+        assets = sorted((root / "_next" / "static").rglob("*.js")) if (root / "_next").is_dir() else []
+        if assets:                                   # only once web/ is built
+            rel = assets[0].relative_to(root).as_posix()
+            with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/{rel}") as r:
+                self.assertIn("immutable", r.headers["Cache-Control"])
+                self.assertTrue(r.headers["Content-Type"].startswith("text/javascript"))
+
+    def test_cors_only_for_listed_origins(self):
+        app.CORS_ORIGINS = {"http://localhost:3000"}
+        try:
+            def preflight(origin):
+                req = urllib.request.Request(f"http://127.0.0.1:{self.port}/v1/sessions", method="OPTIONS",
+                                             headers={"Origin": origin, "Access-Control-Request-Method": "POST"})
+                try:
+                    with urllib.request.urlopen(req) as r:
+                        return r.status, r.headers
+                except urllib.error.HTTPError as e:
+                    return e.code, e.headers
+            status, headers = preflight("http://localhost:3000")
+            self.assertEqual(status, 204)
+            self.assertEqual(headers["Access-Control-Allow-Origin"], "http://localhost:3000")
+            self.assertIn("X-API-Key", headers["Access-Control-Allow-Headers"])
+            self.assertEqual(preflight("https://evil.example")[0], 403)
+        finally:
+            app.CORS_ORIGINS = set()
+
     def test_word_cap_is_reported(self):
         sid = self.session()
         _, out = self.call("POST", f"/v1/sessions/{sid}/words", {"words": ["la"] * (app.MAX_WORDS + 5)})

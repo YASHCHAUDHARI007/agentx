@@ -1,6 +1,6 @@
 # ShelfSense: 3-minute demo video script
 
-Record the screen at 1080p with the demo page open (`python3 server/app.py`, then http://localhost:8080) and a terminal beside it. Use Chrome, so the microphone works. Speak slowly. The timings add up to 3:00.
+Record the screen at 1080p with the demo page open (`make web` once, then `python3 server/app.py` and http://localhost:8080) and a terminal beside it. Use Chrome, so the microphone works. Speak slowly. The timings add up to 3:00.
 
 Before recording:
 - Put `REZOLVE_API_KEY` and `REZOLVE_KB_ID` in `.env` (run `python3 tools/rezolve_setup.py` once) and restart the server. It should print "Rezolve Labs fallback: on". Without a key, skip the Rezolve shot and say it is wired but awaiting the key.

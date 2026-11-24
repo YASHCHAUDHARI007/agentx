@@ -1,6 +1,6 @@
 # ShelfSense service
 
-The agent behind a streaming HTTP API, with a live demo page. Python standard library only.
+The agent behind a streaming HTTP API, plus the live demo. The service is Python standard library only; the demo is the Next.js app in [`web/`](../web/README.md), which this server serves once built (`make web`). Without a build it serves the single-file page in `static/`, so the service runs with Python alone.
 
 ```bash
 python3 server/app.py                 # http://localhost:8080 — fashion (kit) and electronics shops
@@ -55,6 +55,7 @@ All set by environment variables, so the same image runs open on a laptop and lo
 | `SHELFSENSE_RATE` | `20` | Requests per second per API key (or per IP when keys are off), bursts up to 2x. Over the limit: 429 with `Retry-After`. `0` turns it off. |
 | `SHELFSENSE_TRUST_PROXY` | unset | `1` reads the client IP from `X-Forwarded-For`. Only behind your own proxy. |
 | `SHELFSENSE_MAX_SESSIONS` | `1000` | Open sessions per process; above it, new sessions get 503. |
+| `SHELFSENSE_CORS_ORIGINS` | unset | Comma-separated origins allowed to call the API from another origin (`http://localhost:3000` for `next dev`). |
 | `REZOLVE_API_KEY`, `REZOLVE_KB_ID` | unset | Turn on the Rezolve Labs fallback for the kit shop. |
 
 With keys on, open the demo page once as `http://host:8080/?key=<key>`; the page keeps the key in that browser and asks for one on a 401.
