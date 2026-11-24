@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "agent"))
+sys.path.insert(0, str(ROOT / "starter_kit" / "ps1-anticipatory-commerce"))
 
 from parser import Parse, parse  # noqa: E402
 from policy import CommitPolicy  # noqa: E402
@@ -53,6 +54,11 @@ class Parser(unittest.TestCase):
         """'fifteen hundred' can become 'fifteen hundred fifty': not settled yet."""
         self.assertTrue(read("white tshirt size M under fifteen hundred", final=False).pending)
 
+    def test_spoken_amount_closed_by_punctuation(self):
+        """"one" starts the phrase "one piece", but "one thousand," is a finished budget."""
+        p = read("floaters in olive, budget one thousand,", final=False)
+        self.assertEqual(p.known().get("max_price"), 1000)
+
     def test_dangling_correction_word_is_open(self):
         p = read("sneakers in size 8, actually", final=False)
         self.assertTrue(p.open_correction)
@@ -86,6 +92,13 @@ class Policy(unittest.TestCase):
     def test_budget_number_mid_sentence_commits_in_next_mode(self):
         self.assertEqual(self.policy("next").confidence(self.state(), held=0), 1.0)
 
+    def test_spoken_budget_commits_when_it_lands(self):
+        """'under two thousand five hundred | for': the amount completes one word late."""
+        pol = self.policy("next")
+        self.assertEqual(pol.confidence(self.state(), held=0, budget_landed=True), 1.0)
+        self.assertEqual(self.policy("speech").confidence(self.state(), held=0, budget_landed=True), 0.0)
+        self.assertEqual(pol.confidence(self.state("size", "8"), held=0, budget_landed=True), 0.0)
+
     def test_budget_number_at_clause_end_waits(self):
         self.assertEqual(self.policy("next").confidence(self.state(), held=0, clause_end=True), 0.0)
 
@@ -102,6 +115,31 @@ class Policy(unittest.TestCase):
         pol = self.policy("instant")
         self.assertEqual(pol.confidence(self.state("size", "8"), held=0), 0.0)
         self.assertEqual(pol.confidence(self.state("colour", "black"), held=0), 1.0)
+
+
+class FinalChoice(unittest.TestCase):
+    """When several products fit at the end, the request's own words and the budget decide."""
+
+    @classmethod
+    def setUpClass(cls):
+        import evaluate                           # the kit's counted search
+        from agent import Agent
+        cls.tools = evaluate.Tools()
+        cls.agent = Agent(cls.tools, rezolve=None)
+
+    def answer(self, text):
+        self.agent.start("t")
+        for w in text.split():
+            self.agent.observe(w)
+        return self.agent.finish()
+
+    def test_unknown_word_matches_product_text(self):
+        """'sneaks' is not in the lexicon; it still points at sneakers, not running shoes."""
+        self.assertEqual(self.answer("can I get sneaks size 7 UK by Kudova navy blue color cheaper than 4000"), "P0104")
+
+    def test_budget_prefers_price_near_it(self):
+        """'racing flats' is unknown; at 'upto 8000' the shopper means the 7,599 shoe, not 1,349 sandals."""
+        self.assertEqual(self.answer("help me find in navy blue coloured Strydo size 7 UK upto 8000 racing flats"), "P0005")
 
 
 if __name__ == "__main__":

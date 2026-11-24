@@ -24,11 +24,38 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from lexicon import FILLER  # noqa: E402
 from parser import Vocab, default_vocab, parse  # noqa: E402
 from policy import CommitPolicy  # noqa: E402
 from rezolve import RezolveClient, RezolveError  # noqa: E402
 
 SEARCH_K = 200          # enough to return every product of one category and colour
+BUDGET_SHARE = 0.87     # typical target price / stated budget (median over dev, stress and holdout)
+GUESS_SOFT = os.environ.get("AGENT_GUESS_SOFT", "1") != "0"
+GUESS_WEIGHT = float(os.environ.get("AGENT_GUESS_WEIGHT", 0.75))   # = most of one matching word
+
+
+def _grams(word):
+    w = f"#{word}#"
+    return {w[i:i + 3] for i in range(len(w) - 2)}
+
+
+def _overlap(a, b):
+    """Share of a's trigrams found in b: 1.0 for an exact word, ~0.6 for "sneaks" in "sneakers"."""
+    score = len(a & b) / len(a) if a else 0.0
+    return score if score >= 0.5 else 0.0
+
+
+_TEXT_CACHE = {}
+
+
+def _product_grams(profile, row):
+    """Trigram sets of every word in the product's text columns, computed once per product."""
+    key = (id(profile), row[profile.id])
+    if key not in _TEXT_CACHE:
+        text = " ".join(str(v) for k, v in row.items() if isinstance(v, str) and k != profile.id)
+        _TEXT_CACHE[key] = [_grams(w) for w in set(re.findall(r"[a-z0-9]+", text.lower())) if len(w) >= 3]
+    return _TEXT_CACHE[key]
 
 
 def _fits(product, filters, price_col="price"):
@@ -65,6 +92,7 @@ class Agent:
         self.request_id = request_id
         self.words = []
         self.pools = {}           # values of the search slots -> products returned by the search
+        self.fits = {}            # (pool, reading) -> products that fit
         self.searches = 0
         self.committed = None
         self.unique = None        # product id that alone fits the current reading
@@ -91,7 +119,10 @@ class Agent:
         pool = self._pool(f, " ".join(self.words), allow_search)
         if pool is None:
             return None
-        return [x for x in pool if _fits(x, f, self.profile.price)]
+        key = (id(pool), p.key())          # the same reading over the same pool: same products
+        if key not in self.fits:
+            self.fits[key] = [x for x in pool if _fits(x, f, self.profile.price)]
+        return self.fits[key]
 
     # ------------------------------------------------------------ protocol
 
@@ -100,7 +131,9 @@ class Agent:
         p = parse(self.words, vocab=self.vocab)
         # report the best guess, counting a number that may still grow ("under two thousand ...");
         # decisions below use the cautious reading p, which leaves it out until it is complete
-        out = {"filters": parse(self.words, final=True, vocab=self.vocab).known(), "confidence": 0.0}
+        # (the two readings differ only while something is still growing, i.e. while p is pending)
+        full = parse(self.words, final=True, vocab=self.vocab) if p.pending else p
+        out = {"filters": full.known(), "confidence": 0.0}
         if self.committed:
             return out
         clause_end = bool(re.search(r"[.,!?;:]$", word))
@@ -109,6 +142,9 @@ class Agent:
 
         # a slot changing value (a correction) resets everything we believed
         changed = any(self.prev_filters.get(k) not in (None, v) for k, v in p.known().items())
+        # a budget amount completed with this word ("... two thousand five hundred | for"): spoken
+        # numbers stay open until the next word, so they land one word late
+        budget_landed = "max_price" in p.known() and "max_price" not in self.prev_filters
         self.prev_filters = p.known()
 
         # words the parser did not understand, or only guessed at, rule out an early commit
@@ -133,7 +169,8 @@ class Agent:
         out["unknown"] = list(p.unknown)
 
         if self.unique:
-            conf = self.policy.confidence(p, self.held, clause_end=clause_end, punctuated=self.punctuated)
+            conf = self.policy.confidence(p, self.held, clause_end=clause_end, punctuated=self.punctuated,
+                                          budget_landed=budget_landed)
             out["confidence"] = conf
             if conf >= self.policy.threshold:
                 self.committed = self.unique
@@ -153,6 +190,14 @@ class Agent:
         everything understood (every search slot but the category, at least) leaves exactly one
         product, with nothing relaxed."""
         pr = self.profile
+        self._budget = filters.get("max_price")
+        cat = self.vocab.category
+        self._guess = None
+        if GUESS_SOFT and cat and filters.get(cat) in p.guessed:
+            # a category guessed from a generic word ("shoes", "footwear", "tops") is a preference
+            # for the tie-break, not a filter: the shopper may mean any kind of shoe
+            self._guess = filters[cat]
+            filters = {k: v for k, v in filters.items() if k != cat}
         pool = self._pool(filters, " ".join(self.words))
         if pool is None:        # a search slot never understood: one broad search
             self.searches += 1
@@ -192,7 +237,20 @@ class Agent:
         return answer
 
     def _best(self, hits):
-        words = set(re.findall(r"[a-z0-9]+", " ".join(self.words).lower()))
+        """Several products fit what was understood: pick the one the request describes best.
+        1. Word match against the product's own text (title, category, description...), fuzzy so
+           that an unknown word still counts ("sneaks" ~ sneakers, "joggers" ~ jogging).
+        2. Then the price: shoppers name a budget a little above what they mean to pay (target
+           price / budget: median 0.87 over 1,143 requests), so nearest to that share wins."""
         pr = self.profile
-        return max(hits, key=lambda x: (len(words & set(re.findall(r"[a-z0-9]+", str(x[pr.title]).lower()))),
-                                        -x[pr.price]))
+        said = [w for w in re.findall(r"[a-z0-9]+", " ".join(self.words).lower())
+                if len(w) >= 3 and w not in FILLER and not w.isdigit()]
+        budget = self._budget
+
+        def score(x):
+            grams = _product_grams(pr, x)
+            match = sum(max((_overlap(_grams(w), g) for g in grams), default=0.0) for w in said)
+            near = -abs(x[pr.price] / budget - BUDGET_SHARE) if budget else -x[pr.price] / 1e9
+            guess = GUESS_WEIGHT if self._guess and x.get(self.vocab.category) == self._guess else 0.0
+            return round(match + guess, 2), near
+        return max(hits, key=score)

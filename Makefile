@@ -12,9 +12,9 @@ test:            ## unit, service and regression tests (score floors included)
 score:           ## official evaluator on the 300-request dev set
 	$(PY) starter_kit/ps1-anticipatory-commerce/evaluate.py --agent agent/agent.py
 
-gate:            ## fail if the dev score drops below 44.0 or any wrong commit appears
+gate:            ## fail if the dev score drops below 44.2 or any wrong commit appears
 	$(PY) starter_kit/ps1-anticipatory-commerce/evaluate.py --agent agent/agent.py \
-	  | $(PY) tools/quality_gate.py - --min-score 44.0 --max-wrong 0 --min-accuracy 0.99
+	  | $(PY) tools/quality_gate.py - --min-score 44.2 --max-wrong 0 --min-accuracy 0.99
 
 serve:           ## demo page and API on http://localhost:8080 (serves web/out once built)
 	$(PY) server/app.py

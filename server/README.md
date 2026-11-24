@@ -75,5 +75,5 @@ SHELFSENSE_API_KEYS=$(python3 -c "import secrets; print(secrets.token_urlsafe(24
 - **Shutdown**: on SIGTERM (`docker stop`, Kubernetes) the server stops accepting, finishes in-flight requests and exits 0.
 - **Rezolve Labs outages**: searches retry twice on timeouts, 429 and 5xx (with backoff, honouring `Retry-After`); after 3 failed searches in a row the client stops calling for 30 s, so an outage costs the shopper nothing and spends no credits. `/metrics` reports calls, failures and whether the circuit is open.
 - **Rezolve Labs** is used only for the kit shop, whose catalogue is in the knowledge base, and only when `REZOLVE_API_KEY` is set.
-- **Measured** on a laptop: about 0.06 ms per word in the agent (p95 0.24 ms). Each request uses about 1 search.
+- **Measured** on a laptop: about 0.03 ms per word in the agent (p95 0.15 ms), 0.37 ms of CPU per request. Each request uses about 1 search.
 - **Not yet built**: shared session storage (for example Redis) for running several instances behind a load balancer, WebSocket streaming instead of one POST per word, and HTTPS (terminate it at the proxy or load balancer).

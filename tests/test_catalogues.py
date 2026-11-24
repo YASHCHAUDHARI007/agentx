@@ -57,15 +57,23 @@ class Scores(unittest.TestCase):
 
     def test_kit_dev(self):
         results, _ = score(Profile.load(KIT / "catalogue.csv"), load(KIT / "dev.jsonl"))
-        self.check(results, 44.0, 0)
+        self.check(results, 44.3, 0)
 
     def test_stress_and_holdout(self):
         """1,200 generated requests with phrasings dev does not have (typos, Hinglish, "UK9")."""
         kit = Profile.load(KIT / "catalogue.csv")
-        for name, min_score, max_wrong in (("stress", 42.0, 0), ("holdout", 41.0, 1)):
+        for name, min_score, max_wrong in (("stress", 42.5, 0), ("holdout", 41.9, 1)):
             with self.subTest(name):
                 results, _ = score(kit, load(ROOT / "tests" / "stress" / f"{name}.jsonl"))
                 self.check(results, min_score, max_wrong)
+
+    def test_unseen_product_words(self):
+        """Dev requests with the product word swapped for slang the parser has never seen ("low
+        tops", "racing flats", "parka"). Accuracy comes from the fallback; commits must stay safe."""
+        results, _ = score(Profile.load(KIT / "catalogue.csv"), load(ROOT / "tests" / "stress" / "novel_words.jsonl"))
+        s = evaluate.summarise(results)
+        self.assertEqual(s["wrong_commits"], 0)
+        self.assertGreaterEqual(s["accuracy"], 0.83)
 
     def test_electronics(self):
         results, _ = score(Profile.load(ELEC / "catalogue.csv", ELEC / "config.json"), load(ELEC / "requests.jsonl"))

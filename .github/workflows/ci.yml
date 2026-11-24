@@ -35,7 +35,7 @@ jobs:
       - name: Evaluate on the 300-request dev set
         run: python starter_kit/ps1-anticipatory-commerce/evaluate.py --agent agent/agent.py | tee score.txt
       - name: Fail on a lower score or any wrong commit
-        run: python tools/quality_gate.py score.txt --min-score 44.0 --max-wrong 0 --min-accuracy 0.99
+        run: python tools/quality_gate.py score.txt --min-score 44.2 --max-wrong 0 --min-accuracy 0.99
       - name: Summary
         if: always()
         run: |

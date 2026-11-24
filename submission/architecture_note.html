@@ -118,19 +118,19 @@ b { font-weight: 650; }
 <table>
 <tr><th>Set (requests)</th><th>Score</th><th>Accuracy</th><th>Wrong</th><th>Searches</th></tr>
 <tr><td>Kit baseline, dev (300)</td><td class="n">20.0</td><td class="n">0.527</td><td class="n">0</td><td class="n">1.53</td></tr>
-<tr><td><b>ShelfSense, dev (300)</b></td><td class="n"><b>44.1</b></td><td class="n"><b>1.000</b></td><td class="n"><b>0</b></td><td class="n">1.04</td></tr>
+<tr><td><b>ShelfSense, dev (300)</b></td><td class="n"><b>44.3</b></td><td class="n"><b>1.000</b></td><td class="n"><b>0</b></td><td class="n">1.04</td></tr>
 <tr><td>Stress, unseen phrasings (600)</td><td class="n">42.6</td><td class="n">1.000</td><td class="n">0</td><td class="n">1.03</td></tr>
-<tr><td>Holdout, fresh seed (600)</td><td class="n">41.8</td><td class="n">0.997</td><td class="n">1</td><td class="n">1.03</td></tr>
-<tr><td>Dev without punctuation (300)</td><td class="n">43.1</td><td class="n">1.000</td><td class="n">1</td><td class="n">1.04</td></tr>
-<tr><td>Electronics catalogue (300)</td><td class="n">41.9</td><td class="n">1.000</td><td class="n">1</td><td class="n">1.06</td></tr>
+<tr><td>Holdout, fresh seed (600)</td><td class="n">42.0</td><td class="n">1.000</td><td class="n">1</td><td class="n">1.03</td></tr>
+<tr><td>Dev without punctuation (300)</td><td class="n">43.5</td><td class="n">1.000</td><td class="n">0</td><td class="n">1.04</td></tr>
+<tr><td>Electronics catalogue (300)</td><td class="n">42.0</td><td class="n">1.000</td><td class="n">1</td><td class="n">1.06</td></tr>
 </table>
-<p>Dev: earliness 7.0% of the request (best possible 16.3%); filters at the last word 1.00 for category, colour, size, brand and budget. Earlier "instant" commits score 44.9 but make wrong commits, so they are off by default.</p>
+<p>Dev: earliness 7.4% of the request (best possible 16.3%); filters at the last word 1.00 for category, colour, size, brand and budget. Earlier "instant" commits score 45.2 but make 3 wrong commits, so they are off by default.</p>
 
 <h2>Latency, cost, scale</h2>
 <ul>
-<li>0.04 ms per word (p95 0.16 ms); 0.41 ms CPU per request including search; about 2,400 requests/s per core. No language-model calls at run time.</li>
+<li>0.03 ms per word (p95 0.15 ms); 0.37 ms CPU per request including search; about 2,700 requests/s per core. No language-model calls at run time.</li>
 <li>1.04 searches per request: one fetch of category + colour, then local narrowing. Re-reading a revised speech transcript reuses cached searches.</li>
-<li>Service: Python standard library HTTP API, with sessions, <code>/words</code> and <code>/transcript</code> (interim words held until they settle, revised words re-read), API keys, rate limits, Prometheus <code>/metrics</code>, an OpenAPI contract, a decision log, a Docker image, and 44 automated tests in CI with a score gate.</li>
+<li>Service: Python standard library HTTP API, with sessions, <code>/words</code> and <code>/transcript</code> (interim words held until they settle, revised words re-read), API keys, rate limits, Prometheus <code>/metrics</code>, an OpenAPI contract, a decision log, a Docker image, and 49 automated tests in CI with a score gate.</li>
 <li>Front end: Next.js (React, TypeScript), exported to static files and served by the same Python process, so production needs no Node.js.</li>
 </ul>
 

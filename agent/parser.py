@@ -13,6 +13,7 @@ Everything catalogue-specific lives in a Vocab, built from a catalogue profile (
 one process can parse requests for several shops. parse(words) uses the default catalogue.
 """
 import re
+from functools import lru_cache
 from dataclasses import dataclass, field
 
 from catalogue import Profile
@@ -33,6 +34,11 @@ LEAD_CUES = {"under", "below", "than", "within", "max", "maximum", "to", "upto",
              # hesitations that often open a correction ("I mean", "oh, and", "hold on")
              "i", "oh", "ok", "okay", "hold", "hang", "nope", "nah", "arre", "arey", "ya", "or", "plus", "make",
              "rather", "galti", "hmmm", "well", "so"}
+
+# Lead words that, once the budget has been said, open a purpose ("for office", "for my dad")
+# rather than another value. Measured: see policy.py.
+SETTLED_LEADS = {"for"}
+FOR_SETTLES = __import__("os").environ.get("AGENT_FOR_SETTLES", "1") != "0"
 
 # Words that hang off a value ("Pacevo brand", "M size", "black coloured", "Loomsy ka"): saying one
 # is still part of stating the value, not a sign that the request is winding down.
@@ -70,16 +76,26 @@ class Parse:
         return tuple(sorted(self.known().items()))
 
 
+@lru_cache(maxsize=65536)
+def _word_parts(w):
+    """One word's tokens as (raw, stop), or None for a bare clause break. Cached: the agent
+    re-reads the whole prefix on every word, so each word would otherwise be split again and again."""
+    parts = []
+    for part in w.replace("/", " ").split():
+        stop = bool(re.search(r"[,.!?;:…]$", part)) and not re.fullmatch(r"rs\.", part.lower())
+        raw = _PUNCT.sub("", part) if not re.fullmatch(r"rs\.", part.lower()) else part
+        if raw and not re.search(r"[\w₹]", raw):      # a bare dash or ellipsis: a clause break
+            raw, stop = "", True
+        parts.append((raw, stop) if raw else None)
+    return tuple(parts)
+
+
 def tokenize(words):
     out = []
     for w in words:
-        for part in w.replace("/", " ").split():
-            stop = bool(re.search(r"[,.!?;:…]$", part)) and not re.fullmatch(r"rs\.", part.lower())
-            raw = _PUNCT.sub("", part) if not re.fullmatch(r"rs\.", part.lower()) else part
-            if raw and not re.search(r"[\w₹]", raw):      # a bare dash or ellipsis: a clause break
-                raw, stop = "", True
-            if raw:
-                out.append(Token(raw, raw.lower(), stop))
+        for part in _word_parts(w):
+            if part is not None:
+                out.append(Token(part[0], part[0].lower(), part[1]))
             elif out:
                 out[-1].stop = True
     return out
@@ -116,6 +132,7 @@ class Vocab:
                       | set(MULTIPLIERS) | set(self.generic))
         # typo targets: slot words of 4+ letters (short ones like "tan", "red" invite false repairs)
         self.typo_targets = [w for w in self.single if len(w) >= 4 and w.isalpha()]
+        self.repairs = {}              # repair() results, by word
 
 
 _DEFAULT = None
@@ -149,7 +166,16 @@ def _edits(a, b, limit):
 
 
 def repair(tok, v):
-    """Read an unknown word as the slot word it most likely is. Returns the replacement tokens."""
+    """Read an unknown word as the slot word it most likely is. Returns the replacement tokens.
+    Cached per vocabulary: the typo search is the costliest step, and a prefix is re-read per word."""
+    key = (tok.low, tok.raw, tok.stop)
+    hit = v.repairs.get(key)
+    if hit is None:
+        hit = v.repairs[key] = tuple((t.raw, t.low, t.stop, t.guessed) for t in _repair(tok, v))
+    return [Token(*t) for t in hit]
+
+
+def _repair(tok, v):
     low = tok.low
     m = _GLUED_SIZE.match(low)                       # "UK9", "W32"
     if m:
@@ -268,7 +294,9 @@ def parse(words, final=False, vocab=None):
         tok = toks[i]
         # 1. phrases, longest first
         hit = None
-        for n in range(min(v.max_phrase, len(toks) - i), 0, -1):
+        # longer phrases only from a word that starts one (most words do not: skip the tries)
+        longest = min(v.max_phrase, len(toks) - i) if (tok.low,) in v.phrase_starts else 1
+        for n in range(longest, 0, -1):
             key = tuple(t.low for t in toks[i:i + n])
             if key in v.phrases and not any(t.stop for t in toks[i:i + n - 1]):
                 hit = (n, v.phrases[key])
@@ -304,8 +332,8 @@ def parse(words, final=False, vocab=None):
                 and not toks[end - 1].stop
             if last_end_open and prev in SIZE_CUES and sv in v.number_sizes:
                 last_end_open = False      # "size eight" does not grow into "size eight hundred"
-            if not final and end == len(toks) and (tok.low,) in v.phrase_starts and not tok.stop:
-                last_end_open = True       # "128" may be the start of "128 gb"
+            if not final and end == len(toks) and used == 1 and (tok.low,) in v.phrase_starts and not tok.stop:
+                last_end_open = True       # "128" may be the start of "128 gb" ("one thousand," may not)
             if not last_end_open:
                 if (value >= 100 or money) and not size_cued:
                     put("max_price", int(round(value)), end - 1)
@@ -353,8 +381,11 @@ def parse(words, final=False, vocab=None):
 
     if toks:
         last = toks[-1]
+        lead = last.low in LEAD_CUES
+        if lead and last.low in SETTLED_LEADS and p.filters.get("max_price") is not None and FOR_SETTLES:
+            lead = False        # "... under 3000 | for office": the budget is said; "for" opens a purpose
         p.pending = (last_end_open and not last.stop) or (last.low in PREFIX_WORDS and not last.stop) \
-            or last.low in LEAD_CUES or last.low in CURRENCY or last.low in CORRECTION_CUES
+            or lead or last.low in CURRENCY or last.low in CORRECTION_CUES
         p.open_correction = any(t.low in CORRECTION_CUES for t in toks[last_value_at + 1:])
         p.last_kind = kinds[-1] if kinds else ""
     return p

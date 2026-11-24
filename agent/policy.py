@@ -37,6 +37,8 @@ meaning (Vocab.grows_into_other): "navy" -> "navy blue" is still navy.
 """
 import os
 
+SPOKEN_BUDGET = os.environ.get("AGENT_SPOKEN_BUDGET", "1") != "0"
+
 
 class CommitPolicy:
     threshold = 1.0
@@ -55,8 +57,9 @@ class CommitPolicy:
             return "next" if punctuated else "speech"
         return self.mode
 
-    def confidence(self, p, held, clause_end=False, punctuated=True):
-        """clause_end: the last word ended with punctuation (".", ",", "!", "?")."""
+    def confidence(self, p, held, clause_end=False, punctuated=True, budget_landed=False):
+        """clause_end: the last word ended with punctuation (".", ",", "!", "?").
+        budget_landed: the budget amount became complete with this word."""
         mode = self.effective_mode(punctuated)
         if p.pending or p.open_correction:
             return 0.0
@@ -73,4 +76,9 @@ class CommitPolicy:
                     return 1.0
             elif last_slot == "max_price":      # a budget number: 150 of 150 right on dev+stress+holdout
                 return 1.0
+        # the same rule for a spoken amount, which completes only when the next word shows it has
+        # stopped growing ("under two thousand five hundred | for office")
+        if self.immediate and SPOKEN_BUDGET and held == 0 and budget_landed and mode in ("next", "instant") \
+                and not clause_end and p.set_at and max(p.set_at, key=p.set_at.get) == "max_price":
+            return 1.0
         return 0.0
