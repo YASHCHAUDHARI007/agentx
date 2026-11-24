@@ -21,7 +21,8 @@ ELEC = ROOT / "tests" / "catalogues" / "electronics"
 
 
 def load(path):
-    return [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
+    with open(path, encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
 
 
 class Detection(unittest.TestCase):
@@ -57,6 +58,14 @@ class Scores(unittest.TestCase):
     def test_kit_dev(self):
         results, _ = score(Profile.load(KIT / "catalogue.csv"), load(KIT / "dev.jsonl"))
         self.check(results, 44.0, 0)
+
+    def test_stress_and_holdout(self):
+        """1,200 generated requests with phrasings dev does not have (typos, Hinglish, "UK9")."""
+        kit = Profile.load(KIT / "catalogue.csv")
+        for name, min_score, max_wrong in (("stress", 42.0, 0), ("holdout", 41.0, 1)):
+            with self.subTest(name):
+                results, _ = score(kit, load(ROOT / "tests" / "stress" / f"{name}.jsonl"))
+                self.check(results, min_score, max_wrong)
 
     def test_electronics(self):
         results, _ = score(Profile.load(ELEC / "catalogue.csv", ELEC / "config.json"), load(ELEC / "requests.jsonl"))

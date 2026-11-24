@@ -130,7 +130,7 @@ b { font-weight: 650; }
 <ul>
 <li>0.04 ms per word (p95 0.16 ms); 0.41 ms CPU per request including search; about 2,400 requests/s per core. No language-model calls at run time.</li>
 <li>1.04 searches per request: one fetch of category + colour, then local narrowing. Re-reading a revised speech transcript reuses cached searches.</li>
-<li>Service: Python standard library HTTP API, with sessions, <code>/words</code> and <code>/transcript</code> (interim words held until they settle, revised words re-read), <code>/metrics</code>, a decision log, a Docker image, and 11 automated tests.</li>
+<li>Service: Python standard library HTTP API, with sessions, <code>/words</code> and <code>/transcript</code> (interim words held until they settle, revised words re-read), API keys, rate limits, Prometheus <code>/metrics</code>, an OpenAPI contract, a decision log, a Docker image, and 41 automated tests in CI with a score gate.</li>
 </ul>
 
 <div class="box rz">

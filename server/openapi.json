@@ -1,0 +1,745 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "ShelfSense API",
+  "version": "1.1.0",
+  "description": "Anticipatory product search for voice and chat shopping. Send the shopper's words as they arrive; the agent commits to a product as soon as only a correction could still change it.\n\nAuthentication: when the service runs with SHELFSENSE_API_KEYS, every /v1 call and /metrics need `X-API-Key` (or `Authorization: Bearer`). Every response carries `X-Request-Id`."
+ },
+ "servers": [
+  {
+   "url": "http://localhost:8080"
+  }
+ ],
+ "security": [
+  {
+   "ApiKey": []
+  },
+  {
+   "Bearer": []
+  }
+ ],
+ "paths": {
+  "/health": {
+   "get": {
+    "summary": "Liveness",
+    "security": [],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "version": {
+           "type": "string"
+          },
+          "shops": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/metrics": {
+   "get": {
+    "summary": "Counters and latency percentiles",
+    "description": "JSON by default; Prometheus text with `?format=prometheus` or `Accept: text/plain`.",
+    "parameters": [
+     {
+      "name": "format",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "prometheus"
+       ]
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object"
+        }
+       },
+       "text/plain": {
+        "schema": {
+         "type": "string"
+        }
+       }
+      }
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   }
+  },
+  "/v1/shops": {
+   "get": {
+    "summary": "Loaded shops and their detected catalogue profiles",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "shops": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/Shop"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   }
+  },
+  "/v1/shops/{shop}/samples": {
+   "get": {
+    "summary": "Example requests to replay",
+    "parameters": [
+     {
+      "name": "shop",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "n",
+      "in": "query",
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 50,
+       "default": 8
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "samples": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       }
+      }
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   }
+  },
+  "/v1/sessions": {
+   "post": {
+    "summary": "Start a shopper session",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "shop": {
+          "type": "string"
+         },
+         "mode": {
+          "type": "string",
+          "enum": [
+           "auto",
+           "next",
+           "speech",
+           "safe",
+           "instant"
+          ],
+          "default": "auto"
+         }
+        }
+       },
+       "example": {
+        "shop": "fashion",
+        "mode": "auto"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/State"
+        }
+       }
+      }
+     },
+     "400": {
+      "$ref": "#/components/responses/Error"
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     },
+     "503": {
+      "$ref": "#/components/responses/Error"
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   }
+  },
+  "/v1/sessions/{id}": {
+   "get": {
+    "summary": "Session state",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/State"
+        }
+       }
+      }
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   },
+   "delete": {
+    "summary": "Drop a session",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "deleted": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   }
+  },
+  "/v1/sessions/{id}/words": {
+   "post": {
+    "summary": "Append words (chat, or a word stream)",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "words"
+        ],
+        "properties": {
+         "words": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         }
+        }
+       },
+       "example": {
+        "words": [
+         "show",
+         "me",
+         "navy",
+         "sneakers"
+        ]
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Update"
+        }
+       }
+      }
+     },
+     "400": {
+      "$ref": "#/components/responses/Error"
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   }
+  },
+  "/v1/sessions/{id}/transcript": {
+   "post": {
+    "summary": "Send the whole running speech-to-text transcript",
+    "description": "The last word of an interim transcript is not read until it settles. If an earlier word was revised, the request is re-read from the start (searches are cached, so this is free).",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "text"
+        ],
+        "properties": {
+         "text": {
+          "type": "string"
+         },
+         "final": {
+          "type": "boolean",
+          "default": false
+         }
+        }
+       },
+       "example": {
+        "text": "show me navy blue sneakers under",
+        "final": false
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "allOf": [
+          {
+           "$ref": "#/components/schemas/Update"
+          },
+          {
+           "type": "object",
+           "properties": {
+            "revised": {
+             "type": "boolean"
+            }
+           }
+          }
+         ]
+        }
+       }
+      }
+     },
+     "400": {
+      "$ref": "#/components/responses/Error"
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   }
+  },
+  "/v1/sessions/{id}/finish": {
+   "post": {
+    "summary": "End the request and get the final product",
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Result"
+        }
+       }
+      }
+     },
+     "404": {
+      "$ref": "#/components/responses/Error"
+     },
+     "401": {
+      "$ref": "#/components/responses/Unauthorized"
+     },
+     "429": {
+      "$ref": "#/components/responses/RateLimited"
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "securitySchemes": {
+   "ApiKey": {
+    "type": "apiKey",
+    "in": "header",
+    "name": "X-API-Key"
+   },
+   "Bearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  },
+  "responses": {
+   "Error": {
+    "description": "Error",
+    "content": {
+     "application/json": {
+      "schema": {
+       "$ref": "#/components/schemas/Error"
+      }
+     }
+    }
+   },
+   "Unauthorized": {
+    "description": "Missing or invalid API key",
+    "content": {
+     "application/json": {
+      "schema": {
+       "$ref": "#/components/schemas/Error"
+      }
+     }
+    }
+   },
+   "RateLimited": {
+    "description": "Too many requests; see Retry-After",
+    "headers": {
+     "Retry-After": {
+      "schema": {
+       "type": "integer"
+      }
+     }
+    },
+    "content": {
+     "application/json": {
+      "schema": {
+       "$ref": "#/components/schemas/Error"
+      }
+     }
+    }
+   }
+  },
+  "schemas": {
+   "Error": {
+    "type": "object",
+    "required": [
+     "error"
+    ],
+    "properties": {
+     "error": {
+      "type": "string"
+     },
+     "request_id": {
+      "type": "string"
+     }
+    }
+   },
+   "Product": {
+    "type": [
+     "object",
+     "null"
+    ],
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "price": {
+      "type": "number"
+     },
+     "attributes": {
+      "type": "object",
+      "additionalProperties": {
+       "type": "string"
+      }
+     }
+    }
+   },
+   "Shop": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "products": {
+      "type": "integer"
+     },
+     "slots": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "roles": {
+      "type": "object"
+     },
+     "search_slots": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "values": {
+      "type": "object"
+     }
+    }
+   },
+   "Step": {
+    "type": "object",
+    "properties": {
+     "word": {
+      "type": "string"
+     },
+     "n": {
+      "type": "integer"
+     },
+     "ms": {
+      "type": "number",
+      "description": "agent time for this word"
+     },
+     "filters": {
+      "type": "object"
+     },
+     "candidates": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "leading": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "confidence": {
+      "type": "number"
+     },
+     "commit": {
+      "$ref": "#/components/schemas/Product",
+      "description": "present on the word where the agent commits"
+     }
+    }
+   },
+   "State": {
+    "type": "object",
+    "properties": {
+     "session": {
+      "type": "string"
+     },
+     "shop": {
+      "type": "string"
+     },
+     "mode": {
+      "type": "string"
+     },
+     "words": {
+      "type": "integer"
+     },
+     "committed": {
+      "$ref": "#/components/schemas/Product"
+     },
+     "committed_at": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "searches": {
+      "type": "integer"
+     },
+     "revisions": {
+      "type": "integer"
+     },
+     "truncated": {
+      "type": "boolean",
+      "description": "words beyond 200 were dropped"
+     }
+    }
+   },
+   "Update": {
+    "type": "object",
+    "properties": {
+     "steps": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Step"
+      }
+     },
+     "state": {
+      "$ref": "#/components/schemas/State"
+     }
+    }
+   },
+   "Result": {
+    "allOf": [
+     {
+      "$ref": "#/components/schemas/State"
+     },
+     {
+      "type": "object",
+      "properties": {
+       "final": {
+        "$ref": "#/components/schemas/Product"
+       },
+       "early_share": {
+        "type": "number"
+       },
+       "changed_after_commit": {
+        "type": "boolean"
+       },
+       "rezolve": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "reason": {
+           "type": "string"
+          },
+          "answer": {
+           "type": [
+            "string",
+            "null"
+           ]
+          }
+         }
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

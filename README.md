@@ -1,5 +1,7 @@
 # ShelfSense
 
+[![CI](https://github.com/YASHCHAUDHARI007/shelfsense/actions/workflows/ci.yml/badge.svg)](https://github.com/YASHCHAUDHARI007/shelfsense/actions/workflows/ci.yml)
+
 A shopping agent that finds the right product before the shopper finishes the sentence.
 
 Our entry for **AgentX: The Agentic Commerce Challenge** (Techfest 2026-27, IIT Bombay, with Rezolve Ai), Challenge 1: Anticipatory Commerce. Requests arrive one word at a time; ShelfSense reads the shopper's filters as they speak, searches early, and commits to a product only when it is safe to.
@@ -26,7 +28,7 @@ python3 server/app.py        # then open http://localhost:8080
 - [`agent/`](agent/README.md): the agent (parser, commit policy, search, and the Rezolve Labs fallback)
 - [`server/`](server/README.md): streaming HTTP API with speech support, and the live demo page
 - `tools/build_profile.py`, `tools/evaluate_catalogue.py`: onboard and score any shop's catalogue
-- `tests/`: regression tests, stress and holdout sets, and a second (electronics) catalogue
+- `tests/`: 41 tests (parser, commit policy, Rezolve resilience, API, score floors), stress and holdout sets, and a second (electronics) catalogue
 - `tools/rezolve_setup.py`: uploads the catalogue to Rezolve Labs once you have an API key
 - [`submission/`](submission/README.md): Round 1 package (abstract, architecture note, dev outputs, video script)
 - [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md): research, challenge comparison and plan
@@ -36,4 +38,16 @@ Works on any shop's catalogue: columns, filters and vocabulary are detected from
 
 Rezolve Labs semantic search is the fallback for requests the parser can't pin down. It is off until `REZOLVE_API_KEY` is set in `.env` (see [agent/README.md](agent/README.md#rezolve-labs-fallback)).
 
-Python 3.9+, standard library only. MIT licence.
+## Production readiness
+
+- **CI** on every push ([workflow](.github/workflows/ci.yml)): tests on Python 3.10, 3.12 and 3.13; the official evaluator on dev with a **score gate** (fails below 44.0 or on any wrong commit); and the Docker image built, started and checked end to end.
+- **Service**: API keys, per-client rate limits, a cap on open sessions, request ids, security headers, graceful shutdown, Prometheus metrics and an [OpenAPI 3.1 contract](server/openapi.json). All off-by-default settings are environment variables ([server/README.md](server/README.md#production-settings)).
+- **Rezolve Labs** calls retry transient failures and stop for 30 s after repeated ones (circuit breaker), so an outage never slows the shopper; every attempt is counted as a search.
+
+```bash
+make test     # all tests
+make gate     # official evaluator + score gate
+make serve    # demo on http://localhost:8080
+```
+
+Python 3.10+, standard library only. MIT licence.

@@ -1,0 +1,15 @@
+[project]
+name = "shelfsense"
+version = "1.1.0"
+description = "Anticipatory product search: finds the product while the shopper is still talking."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = []          # standard library only, by design
+
+[project.urls]
+Repository = "https://github.com/YASHCHAUDHARI007/shelfsense"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"

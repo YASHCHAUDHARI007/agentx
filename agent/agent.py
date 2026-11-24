@@ -175,15 +175,17 @@ class Agent:
         sure = {k: v for k, v in filters.items() if not (k == cat and v in p.guessed)}
         reason = "no category" if not filters.get(cat) else \
             "guessed category" if cat not in sure else "no unique local match"
+        before = self.rezolve.calls
         try:
-            self.tools.record_search(1)                  # every external search counts
             ids = self.rezolve.search(" ".join(self.words), sure, limit=3)
             if not ids and sure:                         # filters too tight: ask by meaning alone
-                self.tools.record_search(1)
                 ids = self.rezolve.search(" ".join(self.words), {k: v for k, v in sure.items()
                                                                 if k in (self.vocab.colour, self.vocab.size)}, limit=3)
         except RezolveError:
             ids = []
+        finally:                                         # every external call counts, retries included
+            if self.rezolve.calls > before:
+                self.tools.record_search(self.rezolve.calls - before)
         agree = [i for i in ids if i in local_ids]
         answer = agree[0] if agree else ids[0] if ids else None
         self.fallback_log.append((self.request_id, reason, answer))

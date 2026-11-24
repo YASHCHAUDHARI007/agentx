@@ -25,7 +25,8 @@ As words arrive you see what the agent understood, how many products still fit, 
 | `POST /v1/sessions/{id}/finish` | | final product, when it was committed, searches used |
 | `GET /v1/sessions/{id}` · `DELETE /v1/sessions/{id}` | | state · delete |
 | `GET /v1/shops` · `GET /v1/shops/{shop}/samples?n=8` | | detected profiles · example requests |
-| `GET /health` · `GET /metrics` | | liveness · counts and per-word latency p50/p95/p99 |
+| `GET /health` · `GET /metrics` | | liveness · counts and per-word latency p50/p95/p99 (JSON, or Prometheus text with `?format=prometheus`) |
+| `GET /openapi.json` | | the API contract, OpenAPI 3.1 ([openapi.json](openapi.json)) |
 
 A step looks like:
 
@@ -44,11 +45,34 @@ Speech-to-text keeps revising its latest words ("four" becomes "fourteen hundred
 
 Speech has no punctuation, so sessions default to the `auto` commit mode, which uses the stricter speech rules until punctuation appears (see [agent/README.md](../agent/README.md)).
 
+## Production settings
+
+All set by environment variables, so the same image runs open on a laptop and locked down in production:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SHELFSENSE_API_KEYS` | unset (open) | Comma-separated keys. When set, `/v1/*` and `/metrics` need `X-API-Key: <key>` or `Authorization: Bearer <key>`; otherwise 401. `/health`, the page and `/openapi.json` stay open. Keys are compared in constant time. |
+| `SHELFSENSE_RATE` | `20` | Requests per second per API key (or per IP when keys are off), bursts up to 2x. Over the limit: 429 with `Retry-After`. `0` turns it off. |
+| `SHELFSENSE_TRUST_PROXY` | unset | `1` reads the client IP from `X-Forwarded-For`. Only behind your own proxy. |
+| `SHELFSENSE_MAX_SESSIONS` | `1000` | Open sessions per process; above it, new sessions get 503. |
+| `REZOLVE_API_KEY`, `REZOLVE_KB_ID` | unset | Turn on the Rezolve Labs fallback for the kit shop. |
+
+With keys on, open the demo page once as `http://host:8080/?key=<key>`; the page keeps the key in that browser and asks for one on a 401.
+
+```bash
+SHELFSENSE_API_KEYS=$(python3 -c "import secrets; print(secrets.token_urlsafe(24))") python3 server/app.py
+```
+
 ## Operations
 
 - **Sessions** live in memory and expire after 15 idle minutes; a finished session is removed. One process serves every loaded shop; each shop's catalogue is parsed once at start-up.
 - **`--log`** appends one JSON line per finished request: words, committed product and word number, final product, searches, revisions. That is the data for checking wrong commits in production.
-- **Errors** return JSON with a message; tracebacks never reach the client, and are logged.
+- **Errors** return JSON with a message and the request id; tracebacks never reach the client, and are logged with the same id.
+- **Request ids**: every response carries `X-Request-Id` (the caller's, if it sent one), so a client report can be matched to the log.
+- **Headers**: `nosniff`, `no-referrer`, and on the page a Content-Security-Policy that allows only this origin and forbids framing.
+- **Limits**: bodies over 64 KB get 413; a session reads at most 200 words and then reports `truncated: true`.
+- **Shutdown**: on SIGTERM (`docker stop`, Kubernetes) the server stops accepting, finishes in-flight requests and exits 0.
+- **Rezolve Labs outages**: searches retry twice on timeouts, 429 and 5xx (with backoff, honouring `Retry-After`); after 3 failed searches in a row the client stops calling for 30 s, so an outage costs the shopper nothing and spends no credits. `/metrics` reports calls, failures and whether the circuit is open.
 - **Rezolve Labs** is used only for the kit shop, whose catalogue is in the knowledge base, and only when `REZOLVE_API_KEY` is set.
 - **Measured** on a laptop: about 0.06 ms per word in the agent (p95 0.24 ms). Each request uses about 1 search.
-- **Not yet built**: authentication and rate limiting (put it behind a gateway), shared session storage for running several instances, and HTTPS (terminate at the proxy).
+- **Not yet built**: shared session storage (for example Redis) for running several instances behind a load balancer, WebSocket streaming instead of one POST per word, and HTTPS (terminate it at the proxy or load balancer).

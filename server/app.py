@@ -6,8 +6,10 @@
 Standard library only. One process serves several shops; each shopper gets a session.
 
 API (JSON in, JSON out):
-  GET  /health                            liveness, loaded shops
-  GET  /metrics                           request counts, commit rate, latency percentiles
+  GET  /health                            liveness, loaded shops (never needs a key)
+  GET  /metrics                           counts and latency percentiles: JSON, or Prometheus text
+                                          when the scraper asks for text/plain (?format=prometheus)
+  GET  /openapi.json                      the API contract (OpenAPI 3.1)
   GET  /v1/shops                          shops and their detected profiles
   GET  /v1/shops/{shop}/samples?n=8       example requests to replay
   POST /v1/sessions                       {"shop": "fashion", "mode": "auto"} -> {"session": id}
@@ -19,6 +21,9 @@ API (JSON in, JSON out):
 
 Every word update returns the current reading: filters, how many products still fit, the
 product card once the agent commits, and the time the agent took.
+
+Production settings (environment): SHELFSENSE_API_KEYS, SHELFSENSE_RATE, SHELFSENSE_TRUST_PROXY
+(see guard.py), SHELFSENSE_MAX_SESSIONS (default 1000). Every response carries an X-Request-Id.
 """
 import argparse
 import json
@@ -26,10 +31,12 @@ import os
 import random
 import re
 import secrets
+import signal
 import statistics
 import sys
 import threading
 import time
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -43,6 +50,9 @@ from parser import Vocab  # noqa: E402
 from policy import CommitPolicy  # noqa: E402
 from rezolve import RezolveClient  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from guard import ApiKeys, RateLimiter, client_address  # noqa: E402
+
 STATIC = Path(__file__).resolve().parent / "static"
 DEFAULT_SHOPS = {
     "fashion": (ROOT / "starter_kit/ps1-anticipatory-commerce/catalogue.csv", None,
@@ -54,6 +64,8 @@ DEFAULT_SHOPS = {
 SESSION_TTL = 15 * 60
 MODES = ("auto", "next", "speech", "safe", "instant")
 MAX_WORDS = 200
+MAX_SESSIONS = int(os.environ.get("SHELFSENSE_MAX_SESSIONS", 1000))
+VERSION = "1.1.0"
 
 
 # ---------------------------------------------------------------- shops
@@ -67,7 +79,8 @@ class Shop:
         self.by_id = {r[self.profile.id]: r for r in self.profile.rows}
         self.samples = []
         if samples and Path(samples).exists():
-            self.samples = [json.loads(line)["text"] for line in open(samples, encoding="utf-8") if line.strip()]
+            with open(samples, encoding="utf-8") as f:
+                self.samples = [json.loads(line)["text"] for line in f if line.strip()]
 
     def card(self, pid):
         r = self.by_id.get(pid)
@@ -113,6 +126,7 @@ class Session:
         self.words = []                 # words the agent has read
         self.committed = None           # (product id, word number)
         self.revisions = 0
+        self.truncated = False          # words beyond MAX_WORDS were dropped
         self.lock = threading.Lock()
         self._new_agent()
 
@@ -140,6 +154,7 @@ class Session:
         steps = []
         for w in words:
             if len(self.words) >= MAX_WORDS:
+                self.truncated = True
                 break
             steps.append(self._observe(w))
         return steps
@@ -166,7 +181,7 @@ class Session:
         return {"session": self.id, "shop": self.shop.name, "mode": self.mode, "words": len(self.words),
                 "committed": self.shop.card(pid) if pid else None,
                 "committed_at": self.committed[1] if self.committed else None,
-                "searches": self.tools.searches, "revisions": self.revisions}
+                "searches": self.tools.searches, "revisions": self.revisions, "truncated": self.truncated}
 
     def finish(self):
         pid = self.agent.finish() or (self.committed[0] if self.committed else None)
@@ -186,8 +201,14 @@ class Registry:
     def add(self, s):
         with self.lock:
             self._sweep()
+            if len(self.sessions) >= MAX_SESSIONS:
+                raise ApiError(503, "too many open sessions; finish or delete some, or retry shortly")
             self.sessions[s.id] = s
         return s
+
+    def count(self):
+        with self.lock:
+            return len(self.sessions)
 
     def get(self, sid):
         with self.lock:
@@ -211,7 +232,9 @@ class Metrics:
         self.lock = threading.Lock()
         self.started = time.time()
         self.word_ms = []
-        self.counts = {"sessions": 0, "finished": 0, "committed": 0, "changed_after_commit": 0, "errors": 0}
+        self.counts = {"sessions": 0, "finished": 0, "committed": 0, "changed_after_commit": 0, "errors": 0,
+                       "unauthorized": 0, "rate_limited": 0}
+        self.status = {}
 
     def word(self, ms):
         with self.lock:
@@ -222,55 +245,116 @@ class Metrics:
         with self.lock:
             self.counts[key] += 1
 
+    def response(self, code):
+        with self.lock:
+            self.status[code] = self.status.get(code, 0) + 1
+
     def snapshot(self):
         with self.lock:
             ms = sorted(self.word_ms)
             pct = (lambda q: round(ms[int(q * (len(ms) - 1))], 3)) if ms else (lambda q: None)
-            return {"uptime_s": round(time.time() - self.started), **self.counts,
-                    "active_sessions": len(REGISTRY.sessions),
-                    "words": len(ms), "word_ms_mean": round(statistics.mean(ms), 3) if ms else None,
-                    "word_ms_p50": pct(.5), "word_ms_p95": pct(.95), "word_ms_p99": pct(.99)}
+            out = {"uptime_s": round(time.time() - self.started), **self.counts,
+                   "active_sessions": REGISTRY.count(),
+                   "words": len(ms), "word_ms_mean": round(statistics.mean(ms), 3) if ms else None,
+                   "word_ms_p50": pct(.5), "word_ms_p95": pct(.95), "word_ms_p99": pct(.99),
+                   "responses": {str(k): v for k, v in sorted(self.status.items())}}
+        out["rezolve"] = REZOLVE.stats() if REZOLVE is not None and hasattr(REZOLVE, "stats") else None
+        return out
+
+    def prometheus(self):
+        """The same numbers in the Prometheus text format."""
+        m = self.snapshot()
+        lines = []
+
+        def metric(name, kind, help_, samples):
+            lines.extend([f"# HELP shelfsense_{name} {help_}", f"# TYPE shelfsense_{name} {kind}"])
+            for labels, value in samples:
+                if value is not None:
+                    lines.append(f"shelfsense_{name}{labels} {value}")
+
+        metric("uptime_seconds", "gauge", "Seconds since the service started.", [("", m["uptime_s"])])
+        metric("active_sessions", "gauge", "Open shopper sessions.", [("", m["active_sessions"])])
+        for key, help_ in (("sessions", "Sessions started."), ("finished", "Requests finished."),
+                           ("committed", "Finished requests where the agent committed early."),
+                           ("changed_after_commit", "Requests whose final answer differed from the commit."),
+                           ("errors", "Internal errors."), ("unauthorized", "Requests without a valid API key."),
+                           ("rate_limited", "Requests refused by the rate limit.")):
+            metric(f"{key}_total", "counter", help_, [("", m[key])])
+        metric("http_responses_total", "counter", "Responses by status code.",
+               [(f'{{code="{k}"}}', v) for k, v in m["responses"].items()])
+        metric("word_latency_ms", "summary", "Agent time per word, last 10,000 words.",
+               [('{quantile="0.5"}', m["word_ms_p50"]), ('{quantile="0.95"}', m["word_ms_p95"]),
+                ('{quantile="0.99"}', m["word_ms_p99"])])
+        rz = m["rezolve"]
+        if rz:
+            metric("rezolve_calls_total", "counter", "Rezolve Labs search calls (1 credit each).", [("", rz["calls"])])
+            metric("rezolve_failures_total", "counter", "Rezolve Labs calls that failed after retries.",
+                   [("", rz["failures"])])
+            metric("rezolve_circuit_open", "gauge", "1 while Rezolve Labs calls are paused after failures.",
+                   [("", int(rz["circuit_open"]))])
+        return "\n".join(lines) + "\n"
 
 
 SHOPS = {}
 REGISTRY = Registry()
 METRICS = Metrics()
+KEYS = ApiKeys()
+LIMITER = RateLimiter()
 LOG = None
+LOG_LOCK = threading.Lock()
 
 
 def log_event(event):
     if LOG:
-        LOG.write(json.dumps({"t": round(time.time(), 3), **event}, ensure_ascii=False) + "\n")
-        LOG.flush()
+        line = json.dumps({"t": round(time.time(), 3), **event}, ensure_ascii=False) + "\n"
+        with LOG_LOCK:                      # handler threads share the file
+            LOG.write(line)
+            LOG.flush()
 
 
 # ---------------------------------------------------------------- http
 
 class ApiError(Exception):
-    def __init__(self, status, message):
+    def __init__(self, status, message, headers=None):
         super().__init__(message)
-        self.status = status
+        self.status, self.headers = status, headers or {}
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "ShelfSense/1.0"
+    server_version = f"ShelfSense/{VERSION}"
+    sys_version = ""
+    PAGE_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+                "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
 
     def log_message(self, fmt, *args):            # quiet; decisions go to the event log
         pass
 
     # -------------------------------------------------- plumbing
 
-    def _send(self, status, body, ctype="application/json"):
+    def _send(self, status, body, ctype="application/json", headers=None):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Request-Id", self.request_id)
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        if ctype.startswith("text/html"):
+            self.send_header("Content-Security-Policy", self.PAGE_CSP)
+            self.send_header("X-Frame-Options", "DENY")
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
-        self.wfile.write(data)
+        if self.command != "HEAD":
+            self.wfile.write(data)
+        METRICS.response(status)
 
     def _body(self):
-        n = int(self.headers.get("Content-Length") or 0)
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise ApiError(400, "bad Content-Length") from None
         if n > 64_000:
             raise ApiError(413, "request too large")
         if not n:
@@ -289,21 +373,42 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(404, "no such session (they expire after 15 minutes idle)")
         return s
 
+    def _guard(self, parts):
+        """API key and rate limit for everything except the page, its files and /health."""
+        if not parts or parts[0] in ("static", "health", "openapi.json"):
+            return
+        key = KEYS.check(self.headers)
+        if key is None:
+            METRICS.inc("unauthorized")
+            raise ApiError(401, "missing or invalid API key (send X-API-Key)",
+                           {"WWW-Authenticate": 'Bearer realm="shelfsense"'})
+        client = f"key:{key}" if isinstance(key, str) else f"ip:{client_address(self)}"
+        ok, wait = LIMITER.allow(client)
+        if not ok:
+            METRICS.inc("rate_limited")
+            raise ApiError(429, "rate limit exceeded, slow down", {"Retry-After": str(max(1, round(wait + .5)))})
+
     def _dispatch(self, method):
+        rid = self.headers.get("X-Request-Id") or ""
+        self.request_id = rid if re.fullmatch(r"[\w.-]{1,64}", rid) else uuid.uuid4().hex[:16]
         url = urlparse(self.path)
         parts = [p for p in url.path.split("/") if p]
         try:
+            self._guard(parts)
             out = self._route(method, parts, parse_qs(url.query))
             if out is not None:
                 self._send(200, out)
         except ApiError as e:
-            self._send(e.status, {"error": str(e)})
+            self._send(e.status, {"error": str(e), "request_id": self.request_id}, headers=e.headers)
         except Exception as e:                    # never leak a traceback to the client
             METRICS.inc("errors")
-            log_event({"event": "error", "path": url.path, "error": repr(e)})
-            self._send(500, {"error": "internal error"})
+            log_event({"event": "error", "request_id": self.request_id, "path": url.path, "error": repr(e)})
+            self._send(500, {"error": "internal error", "request_id": self.request_id})
 
     def do_GET(self):
+        self._dispatch("GET")
+
+    def do_HEAD(self):
         self._dispatch("GET")
 
     def do_POST(self):
@@ -320,8 +425,14 @@ class Handler(BaseHTTPRequestHandler):
         if method == "GET" and parts[0] == "static" and len(parts) == 2:
             return self._static(parts[1])
         if method == "GET" and parts == ["health"]:
-            return {"ok": True, "shops": sorted(SHOPS)}
+            return {"ok": True, "version": VERSION, "shops": sorted(SHOPS)}
+        if method == "GET" and parts == ["openapi.json"]:
+            return self._send(200, (STATIC.parent / "openapi.json").read_bytes())
         if method == "GET" and parts == ["metrics"]:
+            accept = self.headers.get("Accept") or ""
+            if (query.get("format") or [""])[0] == "prometheus" or \
+                    ("text/plain" in accept and "application/json" not in accept):
+                return self._send(200, METRICS.prometheus().encode(), "text/plain; version=0.0.4; charset=utf-8")
             return METRICS.snapshot()
         if parts[:1] != ["v1"]:
             raise ApiError(404, "not found")
@@ -331,12 +442,17 @@ class Handler(BaseHTTPRequestHandler):
             return {"shops": [s.info() for s in SHOPS.values()]}
         if method == "GET" and len(parts) == 3 and parts[0] == "shops" and parts[2] == "samples":
             shop = SHOPS.get(parts[1]) or self._no_shop(parts[1])
-            n = min(int((query.get("n") or ["8"])[0]), 50)
+            try:
+                n = max(1, min(int((query.get("n") or ["8"])[0]), 50))
+            except ValueError:
+                raise ApiError(400, '"n" must be a number') from None
             return {"samples": random.sample(shop.samples, min(n, len(shop.samples)))}
 
         if method == "POST" and parts == ["sessions"]:
             body = self._body()
             name = body.get("shop") or next(iter(SHOPS))
+            if not isinstance(name, str):
+                raise ApiError(400, '"shop" must be a string')
             shop = SHOPS.get(name) or self._no_shop(name)
             mode = body.get("mode", "auto")
             if mode not in MODES:
@@ -416,8 +532,11 @@ def load_shops(specs):
     return shops
 
 
-def make_server(host="127.0.0.1", port=8080, shops=None, log_path=None):
-    global LOG, REZOLVE
+def make_server(host="127.0.0.1", port=8080, shops=None, log_path=None, keys=None, rate=None):
+    """keys / rate override SHELFSENSE_API_KEYS / SHELFSENSE_RATE (tests use them)."""
+    global LOG, REZOLVE, KEYS, LIMITER
+    KEYS = ApiKeys(keys)
+    LIMITER = RateLimiter(rate)
     SHOPS.clear()
     SHOPS.update(shops if shops is not None else load_shops(None))
     REZOLVE = RezolveClient.from_env()
@@ -425,7 +544,9 @@ def make_server(host="127.0.0.1", port=8080, shops=None, log_path=None):
         from rezolve_mock import MockRezolve
         REZOLVE = MockRezolve(Profile.load(KIT_CATALOGUE))
     LOG = open(log_path, "a", encoding="utf-8") if log_path else None
-    return ThreadingHTTPServer((host, port), Handler)
+    srv = ThreadingHTTPServer((host, port), Handler)
+    srv.daemon_threads = True
+    return srv
 
 
 def main():
@@ -439,11 +560,21 @@ def main():
     for s in SHOPS.values():
         print(f"shop {s.name}: {len(s.profile.rows)} products, filters {', '.join(s.profile.slots)}")
     print(f"Rezolve Labs fallback: {'on' if REZOLVE else 'off (no REZOLVE_API_KEY)'}")
-    print(f"ShelfSense listening on http://{args.host}:{args.port}")
+    print(f"API keys: {'required' if KEYS.enabled else 'off (set SHELFSENSE_API_KEYS to require them)'}; "
+          f"rate limit: {f'{LIMITER.rate:g}/s per client' if LIMITER.rate > 0 else 'off'}")
+    print(f"ShelfSense {VERSION} listening on http://{args.host}:{args.port}", flush=True)
+
+    def stop(*_):                           # docker stop / Kubernetes send SIGTERM: finish in-flight requests
+        threading.Thread(target=srv.shutdown, daemon=True).start()
+    signal.signal(signal.SIGTERM, stop)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        srv.server_close()
+        if LOG:
+            LOG.close()
 
 
 if __name__ == "__main__":

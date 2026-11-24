@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit, service and regression tests (score floors included)
+        run: python -m unittest discover -v tests
+
+  score:
+    name: Score gate (official evaluator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Evaluate on the 300-request dev set
+        run: python starter_kit/ps1-anticipatory-commerce/evaluate.py --agent agent/agent.py | tee score.txt
+      - name: Fail on a lower score or any wrong commit
+        run: python tools/quality_gate.py score.txt --min-score 44.0 --max-wrong 0 --min-accuracy 0.99
+      - name: Summary
+        if: always()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          head -12 score.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  docker:
+    name: Docker image builds and serves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -t shelfsense:ci .
+      - name: Smoke test
+        run: |
+          docker run -d --name ss -p 8080:8080 -e SHELFSENSE_API_KEYS=ci-key shelfsense:ci
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8080/health && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/shops)" = 401
+          sid=$(curl -fs -H 'X-API-Key: ci-key' -H 'Content-Type: application/json' \
+                -d '{"shop":"fashion"}' http://127.0.0.1:8080/v1/sessions | python3 -c 'import sys,json; print(json.load(sys.stdin)["session"])')
+          curl -fs -H 'X-API-Key: ci-key' -H 'Content-Type: application/json' \
+               -d '{"words":["navy","blue","Loomsy","sneakers","under","4500,","size","7"]}' \
+               "http://127.0.0.1:8080/v1/sessions/$sid/words" > /dev/null
+          curl -fs -H 'X-API-Key: ci-key' -X POST "http://127.0.0.1:8080/v1/sessions/$sid/finish" | tee finish.json
+          python3 -c 'import json; assert json.load(open("finish.json"))["final"], "no product"'
+          docker stop -t 10 ss
+          test "$(docker inspect -f '{{.State.ExitCode}}' ss)" = 0
+      - name: Logs
+        if: failure()
+        run: docker logs ss || true
